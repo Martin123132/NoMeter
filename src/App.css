@@ -452,7 +452,13 @@
   min-width: 0;
 }
 
+.file-cell > div,
+.export-row > div {
+  min-width: 0;
+}
+
 .file-cell strong,
+.file-cell span,
 .output-cell span {
   max-width: 100%;
   overflow: hidden;
