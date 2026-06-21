@@ -30,16 +30,18 @@ import {
   type ImageFormat,
 } from './lib/converters'
 import {
+  convertDocumentFile,
   getNativeCommandPreview,
   getNativeRuntimeStatus,
   nativeEngineCatalog,
   transcodeMediaFile,
+  type DocumentOutputFormat,
   type NativeRuntimeStatus,
 } from './lib/nativeEngines'
 import './App.css'
 
-type NavId = 'convert' | 'pdf' | 'images' | 'media' | 'ocr' | 'recipes' | 'history'
-type ToolId = 'image-convert' | 'pdf-merge' | 'pdf-split' | 'native-engine'
+type NavId = 'convert' | 'pdf' | 'documents' | 'images' | 'media' | 'ocr' | 'recipes' | 'history'
+type ToolId = 'image-convert' | 'pdf-merge' | 'pdf-split' | 'document-convert' | 'native-engine'
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
 type JobStatus = 'ready' | 'running' | 'done' | 'blocked' | 'error'
 type BannerTone = 'success' | 'warning' | 'danger'
@@ -84,6 +86,7 @@ type ToolOption = {
 const navItems: NavItem[] = [
   { id: 'convert', label: 'Convert', icon: Workflow, tool: 'image-convert' },
   { id: 'pdf', label: 'PDF Tools', icon: FileText, tool: 'pdf-merge' },
+  { id: 'documents', label: 'Documents', icon: FileText, tool: 'document-convert' },
   { id: 'images', label: 'Images', icon: Image, tool: 'image-convert' },
   { id: 'media', label: 'Audio/Video', icon: Video, tool: 'native-engine' },
   { id: 'ocr', label: 'OCR', icon: Captions, tool: 'native-engine' },
@@ -111,6 +114,12 @@ const toolOptions: ToolOption[] = [
     icon: Scissors,
   },
   {
+    id: 'document-convert',
+    label: 'Documents',
+    detail: 'MD, HTML, DOCX, EPUB',
+    icon: FileText,
+  },
+  {
     id: 'native-engine',
     label: 'Native pack',
     detail: 'FFmpeg, Pandoc, OCR',
@@ -134,6 +143,7 @@ function App() {
   const [jobs, setJobs] = useState<QueueJob[]>([])
   const [exports, setExports] = useState<ExportArtifact[]>([])
   const [imageFormat, setImageFormat] = useState<ImageFormat>('webp')
+  const [documentFormat, setDocumentFormat] = useState<DocumentOutputFormat>('html')
   const [quality, setQuality] = useState(82)
   const [preserveNames, setPreserveNames] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
@@ -196,7 +206,10 @@ function App() {
   }
 
   const loadSampleFiles = useCallback(async () => {
-    const sampleFiles = await createSampleFiles(activeTool === 'native-engine')
+    const sampleFiles = await createSampleFiles({
+      includeDocument: activeTool === 'document-convert',
+      includeMedia: activeTool === 'native-engine',
+    })
     addFiles(sampleFiles)
   }, [activeTool, addFiles])
 
@@ -243,6 +256,14 @@ function App() {
       return
     }
 
+    if (activeTool === 'document-convert' && !nativeStatus.available) {
+      setBanner({
+        tone: 'warning',
+        text: 'The Pandoc document engine is wired, but this browser preview can only run browser-local jobs.',
+      })
+      return
+    }
+
     if (compatibleJobs.length === 0) {
       setBanner({
         tone: 'warning',
@@ -251,6 +272,8 @@ function App() {
             ? 'Add PNG, JPG, WebP, GIF, BMP, or SVG files before running image conversion.'
             : activeTool === 'native-engine'
               ? 'Add one or more audio or video files before running FFmpeg conversion.'
+              : activeTool === 'document-convert'
+                ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
               : 'Add one or more PDF files before running this PDF job.',
       })
       return
@@ -274,6 +297,10 @@ function App() {
 
       if (activeTool === 'native-engine') {
         await runNativeMediaJobs(compatibleJobs)
+      }
+
+      if (activeTool === 'document-convert') {
+        await runDocumentJobs(compatibleJobs)
       }
     } finally {
       setIsRunning(false)
@@ -439,6 +466,45 @@ function App() {
     })
   }
 
+  const runDocumentJobs = async (compatibleJobs: QueueJob[]) => {
+    let completed = 0
+
+    for (const job of compatibleJobs) {
+      updateJob(job.id, {
+        status: 'running',
+        progress: 22,
+        message: `Handing document to Pandoc for ${documentFormat.toUpperCase()}`,
+      })
+
+      try {
+        const result = await convertDocumentFile(job.file, documentFormat)
+        const artifact = createArtifact(result.blob, result.name, 'Pandoc conversion', 1)
+        setExports((current) => [artifact, ...current])
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: `${formatBytes(result.blob.size)} document export ready`,
+          outputName: result.name,
+        })
+        completed += 1
+      } catch (error) {
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'Pandoc conversion failed.',
+        })
+      }
+    }
+
+    setBanner({
+      tone: completed > 0 ? 'success' : 'danger',
+      text:
+        completed > 0
+          ? `${completed} document${completed === 1 ? '' : 's'} converted with Pandoc.`
+          : 'No Pandoc exports were created.',
+    })
+  }
+
   const updateJob = (id: string, patch: Partial<QueueJob>) => {
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, ...patch } : job)))
   }
@@ -515,7 +581,10 @@ function App() {
               </div>
               <div>
                 <h2>Drop files into the forge</h2>
-                <p>Images and PDFs run in the browser; audio and video run through FFmpeg in the desktop app.</p>
+                <p>
+                  Images and PDFs run in the browser; documents and media run through Pandoc and FFmpeg in the
+                  desktop app.
+                </p>
               </div>
               <div className="drop-actions">
                 <label className="file-picker">
@@ -525,7 +594,7 @@ function App() {
                     type="file"
                     multiple
                     onChange={handleFileInput}
-                    accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/svg+xml,application/pdf,video/*,audio/*,.doc,.docx,.ppt,.pptx,.odt,.md,.zip,.7z"
+                    accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/svg+xml,application/pdf,video/*,audio/*,.doc,.docx,.odt,.rtf,.md,.markdown,.html,.htm,.txt,.epub,.zip,.7z"
                   />
                 </label>
                 <button type="button" className="sample-button" onClick={loadSampleFiles}>
@@ -679,6 +748,19 @@ function App() {
                     />
                   </label>
                 </>
+              ) : activeTool === 'document-convert' ? (
+                <div className="segmented-control" aria-label="Document output format">
+                  {(['html', 'docx', 'markdown', 'epub'] as DocumentOutputFormat[]).map((format) => (
+                    <button
+                      type="button"
+                      key={format}
+                      className={documentFormat === format ? 'active' : ''}
+                      onClick={() => setDocumentFormat(format)}
+                    >
+                      {format === 'markdown' ? 'MD' : format.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
               ) : activeTool === 'native-engine' ? (
                 <div className="pdf-output">
                   <AudioWaveform size={18} />
@@ -797,7 +879,7 @@ function createJob(file: File): QueueJob {
   }
 }
 
-async function createSampleFiles(includeMedia = false) {
+async function createSampleFiles(options: { includeDocument?: boolean; includeMedia?: boolean } = {}) {
   const svg = [
     '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">',
     '<rect width="960" height="540" rx="28" fill="#ecfbf4"/>',
@@ -845,11 +927,37 @@ async function createSampleFiles(includeMedia = false) {
 
   const files = [image, pdfFile]
 
-  if (includeMedia) {
+  if (options.includeDocument) {
+    files.unshift(createSampleMarkdownFile())
+  }
+
+  if (options.includeMedia) {
     files.unshift(createSampleAudioFile())
   }
 
   return files
+}
+
+function createSampleMarkdownFile() {
+  const markdown = [
+    '# OpenForge sample document',
+    '',
+    'This document is generated locally for Pandoc conversion testing.',
+    '',
+    '## Promise',
+    '',
+    '- No upload',
+    '- No watermark',
+    '- No subscription',
+    '',
+    '| Engine | Status |',
+    '|---|---|',
+    '| Pandoc | Wired |',
+    '| FFmpeg | Wired |',
+    '',
+  ].join('\n')
+
+  return new File([markdown], 'openforge-sample.md', { type: 'text/markdown' })
 }
 
 function createSampleAudioFile() {
@@ -893,7 +1001,9 @@ function classifyFile(file: File): FileKind {
   if (file.type === 'application/pdf' || extension === 'pdf') return 'pdf'
   if (file.type.startsWith('image/') || browserImageExtensions.has(extension)) return 'image'
   if (file.type.startsWith('video/') || file.type.startsWith('audio/')) return 'media'
-  if (['doc', 'docx', 'odt', 'rtf', 'md', 'ppt', 'pptx', 'csv', 'html'].includes(extension)) return 'document'
+  if (['doc', 'docx', 'odt', 'rtf', 'md', 'markdown', 'txt', 'html', 'htm', 'epub'].includes(extension)) {
+    return 'document'
+  }
   if (['zip', '7z', 'tar', 'gz', 'rar'].includes(extension)) return 'archive'
 
   return 'unknown'
@@ -909,6 +1019,7 @@ function isBrowserReady(file: File, kind: FileKind) {
 function isRunnableForTool(job: QueueJob, tool: ToolId) {
   if (job.status === 'running') return false
   if (tool === 'native-engine') return job.kind === 'media'
+  if (tool === 'document-convert') return job.kind === 'document'
   if (job.status === 'blocked') return false
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'

@@ -16,6 +16,14 @@ struct FfmpegTranscodeRequest {
     output_extension: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct DocumentConvertRequest {
+    file_name: String,
+    bytes_base64: String,
+    output_format: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeArtifact {
@@ -109,6 +117,104 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
     })
 }
 
+#[tauri::command]
+async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Result<NativeArtifact, String> {
+    let input_bytes = general_purpose::STANDARD
+        .decode(request.bytes_base64.as_bytes())
+        .map_err(|error| format!("Could not decode document input: {error}"))?;
+
+    if input_bytes.is_empty() {
+        return Err("The selected document file was empty.".into());
+    }
+
+    let output_format = sanitize_extension(&request.output_format);
+    let config = document_output_config(&output_format)
+        .ok_or_else(|| format!("Unsupported document output format: {output_format}"))?;
+    let work_dir = openforge_work_dir()?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
+
+    let stem = safe_stem(&request.file_name);
+    let input_extension = safe_extension(&request.file_name).unwrap_or_else(|| "txt".into());
+    let output_name = format!("{stem}.{}", config.extension);
+    let input_path = job_dir.join(format!("input.{input_extension}"));
+    let output_path = job_dir.join(&output_name);
+
+    fs::write(&input_path, input_bytes).map_err(|error| format!("Could not write document input: {error}"))?;
+
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "Input path contains unsupported characters.".to_string())?
+        .to_string();
+    let output_arg = output_path
+        .to_str()
+        .ok_or_else(|| "Output path contains unsupported characters.".to_string())?
+        .to_string();
+    let mut args = vec![input_arg, "-o".into(), output_arg];
+
+    if config.standalone {
+        args.push("--standalone".into());
+    }
+
+    let output = app
+        .shell()
+        .sidecar("pandoc")
+        .map_err(|error| format!("Pandoc sidecar is unavailable: {error}"))?
+        .args(args)
+        .output()
+        .await
+        .map_err(|error| format!("Could not run Pandoc: {error}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let log = compact_log(&format!("{stdout}\n{stderr}"));
+
+    if !output.status.success() {
+        return Err(format!("Pandoc failed with status {:?}: {log}", output.status.code()));
+    }
+
+    let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read Pandoc output: {error}"))?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: config.mime_type.into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+    })
+}
+
+struct DocumentOutputConfig {
+    extension: &'static str,
+    mime_type: &'static str,
+    standalone: bool,
+}
+
+fn document_output_config(format: &str) -> Option<DocumentOutputConfig> {
+    match format {
+        "html" => Some(DocumentOutputConfig {
+            extension: "html",
+            mime_type: "text/html",
+            standalone: true,
+        }),
+        "docx" => Some(DocumentOutputConfig {
+            extension: "docx",
+            mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            standalone: false,
+        }),
+        "md" | "markdown" => Some(DocumentOutputConfig {
+            extension: "md",
+            mime_type: "text/markdown",
+            standalone: false,
+        }),
+        "epub" => Some(DocumentOutputConfig {
+            extension: "epub",
+            mime_type: "application/epub+zip",
+            standalone: true,
+        }),
+        _ => None,
+    }
+}
+
 fn openforge_work_dir() -> Result<PathBuf, String> {
     if let Ok(value) = std::env::var("OPENFORGE_WORK_DIR") {
         return Ok(PathBuf::from(value));
@@ -123,12 +229,12 @@ fn openforge_work_dir() -> Result<PathBuf, String> {
 }
 
 fn unique_job_id() -> Result<String, String> {
-    let millis = SystemTime::now()
+    let nanos = SystemTime::now()
         .duration_since(UNIX_EPOCH)
         .map_err(|error| format!("System clock error: {error}"))?
-        .as_millis();
+        .as_nanos();
 
-    Ok(format!("job-{millis}"))
+    Ok(format!("job-{nanos}"))
 }
 
 fn safe_stem(file_name: &str) -> String {
@@ -197,7 +303,7 @@ fn compact_log(value: &str) -> String {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![transcode_media])
+        .invoke_handler(tauri::generate_handler![transcode_media, convert_document])
         .run(tauri::generate_context!())
         .expect("error while running OpenForge");
 }

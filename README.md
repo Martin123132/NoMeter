@@ -11,20 +11,22 @@ The aim is simple: give people the everyday converter tools they pay subscriptio
 - PDF split-to-ZIP in the browser with `pdf-lib` and `jszip`.
 - Downloadable exports from local browser memory.
 - A responsive React/Vite workbench.
-- A Tauri v2 desktop build with bundled FFmpeg and FFprobe sidecars.
+- A Tauri v2 desktop build with bundled FFmpeg, FFprobe, and Pandoc sidecars.
 - Desktop FFmpeg audio/video transcode to MP4 through a Tauri command.
+- Desktop Pandoc document conversion to HTML, DOCX, Markdown, and EPUB.
 - Windows MSI and NSIS installer outputs.
 
 ## Native Engine Pack
 
-The desktop runtime is present under `src-tauri/`. On this workspace, Rust/Cargo live under `D:\Codex\Toolchains\rust`, FFmpeg lives under `D:\Codex\OpenForge\tools\ffmpeg`, and OpenForge work files default to `D:\Codex\OpenForge\work`.
+The desktop runtime is present under `src-tauri/`. On this workspace, Rust/Cargo live under `D:\Codex\Toolchains\rust`, native tools live under `D:\Codex\OpenForge\tools`, and OpenForge work files default to `D:\Codex\OpenForge\work`.
 
-Current engine:
+Current engines:
 
 - FFmpeg for audio/video conversion to MP4.
+- Pandoc for Markdown, HTML, DOCX, ODT, RTF, text, and EPUB document conversion.
 
 Planned engines:
-- Pandoc for document conversion.
+
 - OCRmyPDF and Tesseract for OCR.
 - qpdf and Ghostscript for PDF repair/compression.
 
@@ -56,10 +58,10 @@ Check native prerequisites:
 npm.cmd run native:doctor
 ```
 
-Sync FFmpeg sidecars after downloading or updating FFmpeg:
+Sync native sidecars after downloading or updating native tools:
 
 ```powershell
-npm.cmd run native:sync-ffmpeg
+npm.cmd run native:sync-sidecars
 ```
 
 Run the desktop app:
@@ -76,15 +78,15 @@ npm.cmd run desktop:build
 
 Current release artifacts are copied to `D:\Codex\OpenForge\outputs`:
 
-- `OpenForge_0.1.0_x64-setup.exe`
-- `OpenForge_0.1.0_x64_en-US.msi`
+- `OpenForge_0.2.0_x64-setup.exe`
+- `OpenForge_0.2.0_x64_en-US.msi`
 - `openforge-static.zip`
 
 ## Desktop Prerequisites
 
 - Rust and Cargo.
 - Microsoft C++ Build Tools and WebView2 Runtime on Windows.
-- FFmpeg and FFprobe synced into `src-tauri/binaries` with the platform target-triple suffix.
+- FFmpeg, FFprobe, and Pandoc synced into `src-tauri/binaries` with the platform target-triple suffix.
 - Any additional native engines you want to use, either on `PATH` or bundled as Tauri sidecars later.
 
 ## License

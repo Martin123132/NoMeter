@@ -17,7 +17,7 @@
 - [x] Add FFmpeg sidecar adapter.
 - [x] Build Windows MSI installer.
 - [x] Build Windows NSIS installer.
-- [ ] Add Pandoc sidecar adapter.
+- [x] Add Pandoc sidecar adapter.
 - [ ] Add qpdf/Ghostscript PDF compression adapter.
 - [ ] Add OCRmyPDF/Tesseract OCR adapter.
 - [x] Add D:-scoped working directory defaults for this workspace.

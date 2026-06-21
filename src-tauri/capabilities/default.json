@@ -18,6 +18,11 @@
           "name": "binaries/ffprobe",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/pandoc",
+          "sidecar": true,
+          "args": true
         }
       ]
     }

@@ -1,7 +1,7 @@
 {
   "name": "openforge",
   "private": false,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Local-first file conversion and PDF toolbox.",
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -11,6 +11,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "native:sync-ffmpeg": "node scripts/sync-ffmpeg-sidecars.mjs",
+    "native:sync-pandoc": "node scripts/sync-pandoc-sidecars.mjs",
+    "native:sync-sidecars": "npm.cmd run native:sync-ffmpeg && npm.cmd run native:sync-pandoc",
     "native:relocate-tauri-cache": "node scripts/relocate-tauri-cache.mjs",
     "native:doctor": "node scripts/native-doctor.mjs",
     "tauri": "node scripts/with-d-toolchain.mjs -- tauri",

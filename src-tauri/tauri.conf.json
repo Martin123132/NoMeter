@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "OpenForge",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "dev.openforge.desktop",
   "build": {
     "beforeDevCommand": "npm.cmd run dev -- --host 127.0.0.1",
@@ -30,7 +30,7 @@
     "active": true,
     "targets": "all",
     "category": "Utility",
-    "externalBin": ["binaries/ffmpeg", "binaries/ffprobe"],
+    "externalBin": ["binaries/ffmpeg", "binaries/ffprobe", "binaries/pandoc"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
     "shortDescription": "Local-first file conversion and PDF tools",
     "longDescription": "OpenForge converts, merges, splits, and prepares files locally without accounts, credits, or uploads."

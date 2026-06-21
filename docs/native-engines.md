@@ -28,7 +28,9 @@ The Tauri v2 desktop app builds successfully on Windows.
 
 - Rust/Cargo: `D:\Codex\Toolchains\rust`
 - FFmpeg tools: `D:\Codex\OpenForge\tools\ffmpeg`
+- Pandoc tools: `D:\Codex\OpenForge\tools\pandoc`
 - FFmpeg sidecars: `src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe` and `ffprobe-x86_64-pc-windows-msvc.exe`
+- Pandoc sidecar: `src-tauri/binaries/pandoc-x86_64-pc-windows-msvc.exe`
 - Work directory: `D:\Codex\OpenForge\work`
 - Bundler cache moved to: `D:\Codex\OpenForge\tools\local-appdata\tauri`
 
@@ -38,7 +40,7 @@ Run:
 npm.cmd run native:doctor
 ```
 
-to verify prerequisites. Pandoc, qpdf, Ghostscript, Tesseract, and OCRmyPDF are expected warnings until their adapters are added.
+to verify prerequisites. qpdf, Ghostscript, Tesseract, and OCRmyPDF are expected warnings until their adapters are added.
 
 Build installers with:
 
@@ -47,3 +49,5 @@ npm.cmd run desktop:build
 ```
 
 The current FFmpeg adapter accepts an audio/video `File`, writes it to the D:-scoped work folder, runs the bundled FFmpeg sidecar, and returns a downloadable MP4 blob to the React job queue.
+
+The current Pandoc adapter accepts a document `File`, writes it to the D:-scoped work folder, runs the bundled Pandoc sidecar, and returns downloadable HTML, DOCX, Markdown, or EPUB.

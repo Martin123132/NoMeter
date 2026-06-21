@@ -10,6 +10,7 @@ const rustupHome = process.env.RUSTUP_HOME || join(toolchainRoot, 'rust', 'rustu
 const cargoBin = join(cargoHome, 'bin')
 const tempDir = process.env.OPENFORGE_TEMP || 'D:\\Codex\\Temp'
 const ffmpegRoot = process.env.OPENFORGE_FFMPEG_ROOT || join(openForgeRoot, 'tools', 'ffmpeg')
+const pandocRoot = process.env.OPENFORGE_PANDOC_ROOT || join(openForgeRoot, 'tools', 'pandoc')
 const pathWithToolchain = existsSync(cargoBin)
   ? `${cargoBin}${delimiter}${process.env.PATH || ''}`
   : process.env.PATH || ''
@@ -25,6 +26,7 @@ const commonEnv = {
 
 const localFfmpeg = findFile(ffmpegRoot, 'ffmpeg.exe')
 const localFfprobe = findFile(ffmpegRoot, 'ffprobe.exe')
+const localPandoc = findFile(pandocRoot, 'pandoc.exe')
 const checks = [
   { name: 'Node.js', command: 'node', args: ['--version'], required: true },
   npmCheck(),
@@ -32,7 +34,7 @@ const checks = [
   { name: 'Rust compiler', command: commandPath('rustc'), args: ['--version'], required: true },
   { name: 'FFmpeg', command: localFfmpeg || 'ffmpeg', args: ['-version'], required: false },
   { name: 'FFprobe', command: localFfprobe || 'ffprobe', args: ['-version'], required: false },
-  { name: 'Pandoc', command: 'pandoc', args: ['--version'], required: false },
+  { name: 'Pandoc', command: localPandoc || 'pandoc', args: ['--version'], required: false },
   { name: 'qpdf', command: 'qpdf', args: ['--version'], required: false },
   { name: 'Ghostscript', command: 'gswin64c', args: ['--version'], required: false },
   { name: 'Tesseract', command: 'tesseract', args: ['--version'], required: false },
@@ -88,6 +90,7 @@ const hostTriple = getHostTriple()
 if (hostTriple) {
   checkSidecar('FFmpeg sidecar', `src-tauri/binaries/ffmpeg-${hostTriple}.exe`, false)
   checkSidecar('FFprobe sidecar', `src-tauri/binaries/ffprobe-${hostTriple}.exe`, false)
+  checkSidecar('Pandoc sidecar', `src-tauri/binaries/pandoc-${hostTriple}.exe`, false)
 } else {
   console.log('WARN sidecar check skipped: Rust target triple unavailable')
 }
@@ -141,7 +144,7 @@ function checkSidecar(name, path, required) {
     failedRequired = true
     console.log(`FAIL ${name}: ${path} missing`)
   } else {
-    console.log(`WARN ${name}: ${path} missing; run npm.cmd run native:sync-ffmpeg`)
+    console.log(`WARN ${name}: ${path} missing; run npm.cmd run native:sync-sidecars`)
   }
 }
 

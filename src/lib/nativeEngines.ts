@@ -15,6 +15,8 @@ export type NativeRuntimeStatus = {
   detail: string
 }
 
+export type DocumentOutputFormat = 'html' | 'docx' | 'markdown' | 'epub'
+
 export type NativeTranscodeResult = {
   name: string
   blob: Blob
@@ -36,7 +38,7 @@ export const nativeEngineCatalog: NativeEngine[] = [
     role: 'document format bridge',
     command: 'pandoc',
     sidecarName: 'pandoc',
-    status: 'planned',
+    status: 'wired',
   },
   {
     id: 'qpdf',
@@ -90,7 +92,7 @@ export async function getNativeRuntimeStatus(): Promise<NativeRuntimeStatus> {
     return {
       available: true,
       label: 'Desktop bridge',
-      detail: 'Tauri bridge loaded. FFmpeg media conversion is available in the desktop app.',
+      detail: 'Tauri bridge loaded. FFmpeg and Pandoc conversion are available in the desktop app.',
     }
   } catch {
     return {
@@ -121,6 +123,35 @@ export async function transcodeMediaFile(file: File): Promise<NativeTranscodeRes
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
       outputExtension: 'mp4',
+    },
+  })
+
+  return {
+    name: artifact.name,
+    blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
+    log: artifact.log,
+  }
+}
+
+export async function convertDocumentFile(
+  file: File,
+  outputFormat: DocumentOutputFormat,
+): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Native document conversion requires the OpenForge desktop app.')
+  }
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  const artifact = await invoke<{
+    name: string
+    mimeType: string
+    bytesBase64: string
+    log: string
+  }>('convert_document', {
+    request: {
+      fileName: file.name,
+      bytesBase64: await fileToBase64(file),
+      outputFormat,
     },
   })
 
