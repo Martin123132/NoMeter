@@ -46,7 +46,7 @@ export const nativeEngineCatalog: NativeEngine[] = [
     role: 'PDF repair and structural operations',
     command: 'qpdf',
     sidecarName: 'qpdf',
-    status: 'planned',
+    status: 'wired',
   },
   {
     id: 'ghostscript',
@@ -92,7 +92,7 @@ export async function getNativeRuntimeStatus(): Promise<NativeRuntimeStatus> {
     return {
       available: true,
       label: 'Desktop bridge',
-      detail: 'Tauri bridge loaded. FFmpeg and Pandoc conversion are available in the desktop app.',
+      detail: 'Tauri bridge loaded. FFmpeg, Pandoc, and qpdf conversion are available in the desktop app.',
     }
   } catch {
     return {
@@ -152,6 +152,31 @@ export async function convertDocumentFile(
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
       outputFormat,
+    },
+  })
+
+  return {
+    name: artifact.name,
+    blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
+    log: artifact.log,
+  }
+}
+
+export async function optimizePdfFile(file: File): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Native PDF optimization requires the OpenForge desktop app.')
+  }
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  const artifact = await invoke<{
+    name: string
+    mimeType: string
+    bytesBase64: string
+    log: string
+  }>('optimize_pdf', {
+    request: {
+      fileName: file.name,
+      bytesBase64: await fileToBase64(file),
     },
   })
 

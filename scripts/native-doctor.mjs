@@ -11,6 +11,7 @@ const cargoBin = join(cargoHome, 'bin')
 const tempDir = process.env.OPENFORGE_TEMP || 'D:\\Codex\\Temp'
 const ffmpegRoot = process.env.OPENFORGE_FFMPEG_ROOT || join(openForgeRoot, 'tools', 'ffmpeg')
 const pandocRoot = process.env.OPENFORGE_PANDOC_ROOT || join(openForgeRoot, 'tools', 'pandoc')
+const qpdfRoot = process.env.OPENFORGE_QPDF_ROOT || join(openForgeRoot, 'tools', 'qpdf')
 const pathWithToolchain = existsSync(cargoBin)
   ? `${cargoBin}${delimiter}${process.env.PATH || ''}`
   : process.env.PATH || ''
@@ -27,6 +28,7 @@ const commonEnv = {
 const localFfmpeg = findFile(ffmpegRoot, 'ffmpeg.exe')
 const localFfprobe = findFile(ffmpegRoot, 'ffprobe.exe')
 const localPandoc = findFile(pandocRoot, 'pandoc.exe')
+const localQpdf = findFile(qpdfRoot, 'qpdf.exe')
 const checks = [
   { name: 'Node.js', command: 'node', args: ['--version'], required: true },
   npmCheck(),
@@ -35,7 +37,7 @@ const checks = [
   { name: 'FFmpeg', command: localFfmpeg || 'ffmpeg', args: ['-version'], required: false },
   { name: 'FFprobe', command: localFfprobe || 'ffprobe', args: ['-version'], required: false },
   { name: 'Pandoc', command: localPandoc || 'pandoc', args: ['--version'], required: false },
-  { name: 'qpdf', command: 'qpdf', args: ['--version'], required: false },
+  { name: 'qpdf', command: localQpdf || 'qpdf', args: ['--version'], required: false },
   { name: 'Ghostscript', command: 'gswin64c', args: ['--version'], required: false },
   { name: 'Tesseract', command: 'tesseract', args: ['--version'], required: false },
   { name: 'OCRmyPDF', command: 'ocrmypdf', args: ['--version'], required: false },
@@ -91,6 +93,8 @@ if (hostTriple) {
   checkSidecar('FFmpeg sidecar', `src-tauri/binaries/ffmpeg-${hostTriple}.exe`, false)
   checkSidecar('FFprobe sidecar', `src-tauri/binaries/ffprobe-${hostTriple}.exe`, false)
   checkSidecar('Pandoc sidecar', `src-tauri/binaries/pandoc-${hostTriple}.exe`, false)
+  checkSidecar('qpdf sidecar', `src-tauri/binaries/qpdf-${hostTriple}.exe`, false)
+  checkSidecar('qpdf runtime DLL', 'src-tauri/binaries/qpdf30.dll', false)
 } else {
   console.log('WARN sidecar check skipped: Rust target triple unavailable')
 }

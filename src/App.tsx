@@ -34,6 +34,7 @@ import {
   getNativeCommandPreview,
   getNativeRuntimeStatus,
   nativeEngineCatalog,
+  optimizePdfFile,
   transcodeMediaFile,
   type DocumentOutputFormat,
   type NativeRuntimeStatus,
@@ -41,7 +42,7 @@ import {
 import './App.css'
 
 type NavId = 'convert' | 'pdf' | 'documents' | 'images' | 'media' | 'ocr' | 'recipes' | 'history'
-type ToolId = 'image-convert' | 'pdf-merge' | 'pdf-split' | 'document-convert' | 'native-engine'
+type ToolId = 'image-convert' | 'pdf-merge' | 'pdf-split' | 'pdf-optimize' | 'document-convert' | 'native-engine'
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
 type JobStatus = 'ready' | 'running' | 'done' | 'blocked' | 'error'
 type BannerTone = 'success' | 'warning' | 'danger'
@@ -114,6 +115,12 @@ const toolOptions: ToolOption[] = [
     icon: Scissors,
   },
   {
+    id: 'pdf-optimize',
+    label: 'Optimize PDFs',
+    detail: 'Repair, compress, linearize',
+    icon: FileText,
+  },
+  {
     id: 'document-convert',
     label: 'Documents',
     detail: 'MD, HTML, DOCX, EPUB',
@@ -122,7 +129,7 @@ const toolOptions: ToolOption[] = [
   {
     id: 'native-engine',
     label: 'Native pack',
-    detail: 'FFmpeg, Pandoc, OCR',
+    detail: 'FFmpeg, Pandoc, qpdf',
     icon: Archive,
   },
 ]
@@ -264,6 +271,14 @@ function App() {
       return
     }
 
+    if (activeTool === 'pdf-optimize' && !nativeStatus.available) {
+      setBanner({
+        tone: 'warning',
+        text: 'The qpdf optimizer is wired, but this browser preview can only run browser-local PDF jobs.',
+      })
+      return
+    }
+
     if (compatibleJobs.length === 0) {
       setBanner({
         tone: 'warning',
@@ -274,7 +289,9 @@ function App() {
               ? 'Add one or more audio or video files before running FFmpeg conversion.'
               : activeTool === 'document-convert'
                 ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
-              : 'Add one or more PDF files before running this PDF job.',
+                : activeTool === 'pdf-optimize'
+                  ? 'Add one or more PDF files before running qpdf optimization.'
+                  : 'Add one or more PDF files before running this PDF job.',
       })
       return
     }
@@ -293,6 +310,10 @@ function App() {
 
       if (activeTool === 'pdf-split') {
         await runPdfSplit(compatibleJobs)
+      }
+
+      if (activeTool === 'pdf-optimize') {
+        await runPdfOptimize(compatibleJobs)
       }
 
       if (activeTool === 'native-engine') {
@@ -425,6 +446,45 @@ function App() {
       )
       setBanner({ tone: 'danger', text: 'PDF split failed. The source may be encrypted or malformed.' })
     }
+  }
+
+  const runPdfOptimize = async (compatibleJobs: QueueJob[]) => {
+    let completed = 0
+
+    for (const job of compatibleJobs) {
+      updateJob(job.id, {
+        status: 'running',
+        progress: 38,
+        message: 'Repairing and linearizing with qpdf',
+      })
+
+      try {
+        const result = await optimizePdfFile(job.file)
+        const artifact = createArtifact(result.blob, result.name, 'qpdf optimize', 1)
+        setExports((current) => [artifact, ...current])
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: `${formatBytes(result.blob.size)} optimized PDF ready`,
+          outputName: result.name,
+        })
+        completed += 1
+      } catch (error) {
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'qpdf optimization failed.',
+        })
+      }
+    }
+
+    setBanner({
+      tone: completed > 0 ? 'success' : 'danger',
+      text:
+        completed > 0
+          ? `${completed} PDF${completed === 1 ? '' : 's'} optimized with qpdf.`
+          : 'No qpdf exports were created.',
+    })
   }
 
   const runNativeMediaJobs = async (compatibleJobs: QueueJob[]) => {
@@ -582,8 +642,7 @@ function App() {
               <div>
                 <h2>Drop files into the forge</h2>
                 <p>
-                  Images and PDFs run in the browser; documents and media run through Pandoc and FFmpeg in the
-                  desktop app.
+                  Images and PDFs run in the browser; qpdf, Pandoc, and FFmpeg power desktop-only jobs.
                 </p>
               </div>
               <div className="drop-actions">
@@ -765,6 +824,11 @@ function App() {
                 <div className="pdf-output">
                   <AudioWaveform size={18} />
                   <span>MP4 H.264</span>
+                </div>
+              ) : activeTool === 'pdf-optimize' ? (
+                <div className="pdf-output">
+                  <CheckCircle2 size={18} />
+                  <span>Optimized PDF</span>
                 </div>
               ) : (
                 <div className="pdf-output">
@@ -1020,6 +1084,7 @@ function isRunnableForTool(job: QueueJob, tool: ToolId) {
   if (job.status === 'running') return false
   if (tool === 'native-engine') return job.kind === 'media'
   if (tool === 'document-convert') return job.kind === 'document'
+  if (tool === 'pdf-optimize') return job.kind === 'pdf'
   if (job.status === 'blocked') return false
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'

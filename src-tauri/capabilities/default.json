@@ -23,6 +23,11 @@
           "name": "binaries/pandoc",
           "sidecar": true,
           "args": true
+        },
+        {
+          "name": "binaries/qpdf",
+          "sidecar": true,
+          "args": true
         }
       ]
     }

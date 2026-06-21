@@ -1,6 +1,6 @@
 [package]
 name = "openforge"
-version = "0.2.0"
+version = "0.3.0"
 description = "Local-first file conversion and PDF toolbox"
 authors = ["OpenForge contributors"]
 edition = "2021"

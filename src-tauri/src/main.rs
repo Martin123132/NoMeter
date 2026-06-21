@@ -24,6 +24,13 @@ struct DocumentConvertRequest {
     output_format: String,
 }
 
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PdfOptimizeRequest {
+    file_name: String,
+    bytes_base64: String,
+}
+
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct NativeArtifact {
@@ -112,6 +119,69 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
     Ok(NativeArtifact {
         name: output_name,
         mime_type: "video/mp4".into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+    })
+}
+
+#[tauri::command]
+async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<NativeArtifact, String> {
+    let input_bytes = general_purpose::STANDARD
+        .decode(request.bytes_base64.as_bytes())
+        .map_err(|error| format!("Could not decode PDF input: {error}"))?;
+
+    if input_bytes.is_empty() {
+        return Err("The selected PDF file was empty.".into());
+    }
+
+    let work_dir = openforge_work_dir()?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
+
+    let stem = safe_stem(&request.file_name);
+    let output_name = format!("{stem}-optimized.pdf");
+    let input_path = job_dir.join("input.pdf");
+    let output_path = job_dir.join(&output_name);
+
+    fs::write(&input_path, input_bytes).map_err(|error| format!("Could not write PDF input: {error}"))?;
+
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "Input path contains unsupported characters.".to_string())?;
+    let output_arg = output_path
+        .to_str()
+        .ok_or_else(|| "Output path contains unsupported characters.".to_string())?;
+
+    let output = app
+        .shell()
+        .sidecar("qpdf")
+        .map_err(|error| format!("qpdf sidecar is unavailable: {error}"))?
+        .args([
+            "--linearize",
+            "--object-streams=generate",
+            "--compress-streams=y",
+            "--recompress-flate",
+            "--compression-level=9",
+            input_arg,
+            output_arg,
+        ])
+        .output()
+        .await
+        .map_err(|error| format!("Could not run qpdf: {error}"))?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let log = compact_log(&format!("{stdout}\n{stderr}"));
+
+    if !output.status.success() {
+        return Err(format!("qpdf failed with status {:?}: {log}", output.status.code()));
+    }
+
+    let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read qpdf output: {error}"))?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "application/pdf".into(),
         bytes_base64: general_purpose::STANDARD.encode(output_bytes),
         log,
     })
@@ -303,7 +373,11 @@ fn compact_log(value: &str) -> String {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_shell::init())
-        .invoke_handler(tauri::generate_handler![transcode_media, convert_document])
+        .invoke_handler(tauri::generate_handler![
+            transcode_media,
+            convert_document,
+            optimize_pdf
+        ])
         .run(tauri::generate_context!())
         .expect("error while running OpenForge");
 }

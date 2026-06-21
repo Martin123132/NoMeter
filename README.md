@@ -11,9 +11,10 @@ The aim is simple: give people the everyday converter tools they pay subscriptio
 - PDF split-to-ZIP in the browser with `pdf-lib` and `jszip`.
 - Downloadable exports from local browser memory.
 - A responsive React/Vite workbench.
-- A Tauri v2 desktop build with bundled FFmpeg, FFprobe, and Pandoc sidecars.
+- A Tauri v2 desktop build with bundled FFmpeg, FFprobe, Pandoc, and qpdf sidecars.
 - Desktop FFmpeg audio/video transcode to MP4 through a Tauri command.
 - Desktop Pandoc document conversion to HTML, DOCX, Markdown, and EPUB.
+- Desktop qpdf PDF repair, compression, and linearization.
 - Windows MSI and NSIS installer outputs.
 
 ## Native Engine Pack
@@ -24,11 +25,12 @@ Current engines:
 
 - FFmpeg for audio/video conversion to MP4.
 - Pandoc for Markdown, HTML, DOCX, ODT, RTF, text, and EPUB document conversion.
+- qpdf for PDF repair, compression, and linearization.
 
 Planned engines:
 
 - OCRmyPDF and Tesseract for OCR.
-- qpdf and Ghostscript for PDF repair/compression.
+- Ghostscript for PDF rasterization and deeper compression.
 
 OpenForge keeps this workspace's project, outputs, toolchains, build caches, and working directories away from the system drive where the tooling allows it. Tauri's Windows bundler cache is moved back to `D:\Codex\OpenForge\tools\local-appdata\tauri` after packaging.
 
@@ -78,15 +80,15 @@ npm.cmd run desktop:build
 
 Current release artifacts are copied to `D:\Codex\OpenForge\outputs`:
 
-- `OpenForge_0.2.0_x64-setup.exe`
-- `OpenForge_0.2.0_x64_en-US.msi`
+- `OpenForge_0.3.0_x64-setup.exe`
+- `OpenForge_0.3.0_x64_en-US.msi`
 - `openforge-static.zip`
 
 ## Desktop Prerequisites
 
 - Rust and Cargo.
 - Microsoft C++ Build Tools and WebView2 Runtime on Windows.
-- FFmpeg, FFprobe, and Pandoc synced into `src-tauri/binaries` with the platform target-triple suffix.
+- FFmpeg, FFprobe, Pandoc, and qpdf synced into `src-tauri/binaries` with the platform target-triple suffix.
 - Any additional native engines you want to use, either on `PATH` or bundled as Tauri sidecars later.
 
 ## License

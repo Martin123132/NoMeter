@@ -18,7 +18,8 @@
 - [x] Build Windows MSI installer.
 - [x] Build Windows NSIS installer.
 - [x] Add Pandoc sidecar adapter.
-- [ ] Add qpdf/Ghostscript PDF compression adapter.
+- [x] Add qpdf PDF repair/linearization adapter.
+- [ ] Add Ghostscript PDF rasterization/compression adapter.
 - [ ] Add OCRmyPDF/Tesseract OCR adapter.
 - [x] Add D:-scoped working directory defaults for this workspace.
 - [ ] Add user-configurable working directory picker.

@@ -1,7 +1,7 @@
 {
   "name": "openforge",
   "private": false,
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Local-first file conversion and PDF toolbox.",
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -12,7 +12,8 @@
     "preview": "vite preview",
     "native:sync-ffmpeg": "node scripts/sync-ffmpeg-sidecars.mjs",
     "native:sync-pandoc": "node scripts/sync-pandoc-sidecars.mjs",
-    "native:sync-sidecars": "npm.cmd run native:sync-ffmpeg && npm.cmd run native:sync-pandoc",
+    "native:sync-qpdf": "node scripts/sync-qpdf-sidecars.mjs",
+    "native:sync-sidecars": "npm.cmd run native:sync-ffmpeg && npm.cmd run native:sync-pandoc && npm.cmd run native:sync-qpdf",
     "native:relocate-tauri-cache": "node scripts/relocate-tauri-cache.mjs",
     "native:doctor": "node scripts/native-doctor.mjs",
     "tauri": "node scripts/with-d-toolchain.mjs -- tauri",
