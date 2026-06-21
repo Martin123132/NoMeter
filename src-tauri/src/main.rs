@@ -2,7 +2,7 @@ use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
-    path::PathBuf,
+    path::{Path, PathBuf},
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::AppHandle;
@@ -14,6 +14,7 @@ struct FfmpegTranscodeRequest {
     file_name: String,
     bytes_base64: String,
     output_extension: Option<String>,
+    folders: Option<NativeFolders>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -22,6 +23,7 @@ struct DocumentConvertRequest {
     file_name: String,
     bytes_base64: String,
     output_format: String,
+    folders: Option<NativeFolders>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -29,6 +31,14 @@ struct DocumentConvertRequest {
 struct PdfOptimizeRequest {
     file_name: String,
     bytes_base64: String,
+    folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeFolders {
+    work_dir: Option<String>,
+    output_dir: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -38,6 +48,7 @@ struct NativeArtifact {
     mime_type: String,
     bytes_base64: String,
     log: String,
+    saved_path: Option<String>,
 }
 
 #[tauri::command]
@@ -50,7 +61,8 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
         return Err("The selected media file was empty.".into());
     }
 
-    let work_dir = openforge_work_dir()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
     let job_dir = work_dir.join(unique_job_id()?);
     fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
 
@@ -115,12 +127,14 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
     }
 
     let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read FFmpeg output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
         name: output_name,
         mime_type: "video/mp4".into(),
         bytes_base64: general_purpose::STANDARD.encode(output_bytes),
         log,
+        saved_path,
     })
 }
 
@@ -134,7 +148,8 @@ async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<Nat
         return Err("The selected PDF file was empty.".into());
     }
 
-    let work_dir = openforge_work_dir()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
     let job_dir = work_dir.join(unique_job_id()?);
     fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
 
@@ -178,12 +193,14 @@ async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<Nat
     }
 
     let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read qpdf output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
         name: output_name,
         mime_type: "application/pdf".into(),
         bytes_base64: general_purpose::STANDARD.encode(output_bytes),
         log,
+        saved_path,
     })
 }
 
@@ -200,7 +217,8 @@ async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Re
     let output_format = sanitize_extension(&request.output_format);
     let config = document_output_config(&output_format)
         .ok_or_else(|| format!("Unsupported document output format: {output_format}"))?;
-    let work_dir = openforge_work_dir()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
     let job_dir = work_dir.join(unique_job_id()?);
     fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
 
@@ -244,12 +262,14 @@ async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Re
     }
 
     let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read Pandoc output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
         name: output_name,
         mime_type: config.mime_type.into(),
         bytes_base64: general_purpose::STANDARD.encode(output_bytes),
         log,
+        saved_path,
     })
 }
 
@@ -285,9 +305,15 @@ fn document_output_config(format: &str) -> Option<DocumentOutputConfig> {
     }
 }
 
-fn openforge_work_dir() -> Result<PathBuf, String> {
+fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String> {
+    if let Some(path) = configured_folder(folders.and_then(|value| value.work_dir.as_deref()), "work")? {
+        return Ok(path);
+    }
+
     if let Ok(value) = std::env::var("OPENFORGE_WORK_DIR") {
-        return Ok(PathBuf::from(value));
+        if let Some(path) = configured_folder(Some(&value), "work")? {
+            return Ok(path);
+        }
     }
 
     let d_drive_root = PathBuf::from(r"D:\Codex\OpenForge");
@@ -296,6 +322,105 @@ fn openforge_work_dir() -> Result<PathBuf, String> {
     }
 
     Ok(std::env::temp_dir().join("openforge-work"))
+}
+
+fn openforge_output_dir(folders: Option<&NativeFolders>) -> Result<Option<PathBuf>, String> {
+    if let Some(path) = configured_folder(folders.and_then(|value| value.output_dir.as_deref()), "save")? {
+        return Ok(Some(path));
+    }
+
+    if let Ok(value) = std::env::var("OPENFORGE_OUTPUT_DIR") {
+        if let Some(path) = configured_folder(Some(&value), "save")? {
+            return Ok(Some(path));
+        }
+    }
+
+    let d_drive_root = PathBuf::from(r"D:\Codex\OpenForge");
+    if d_drive_root.exists() {
+        return Ok(Some(d_drive_root.join("outputs").join("converted")));
+    }
+
+    Ok(None)
+}
+
+fn configured_folder(value: Option<&str>, label: &str) -> Result<Option<PathBuf>, String> {
+    let Some(raw_value) = value else {
+        return Ok(None);
+    };
+    let trimmed = raw_value.trim();
+
+    if trimmed.is_empty() {
+        return Ok(None);
+    }
+
+    let path = PathBuf::from(trimmed);
+    if !path.is_absolute() {
+        return Err(format!("Use an absolute {label} folder path."));
+    }
+
+    if is_system_drive_path(&path) {
+        return Err(format!(
+            "Choose a non-system {label} folder. This OpenForge workspace stays off C:."
+        ));
+    }
+
+    Ok(Some(path))
+}
+
+#[cfg(windows)]
+fn is_system_drive_path(path: &Path) -> bool {
+    use std::path::{Component, Prefix};
+
+    matches!(
+        path.components().next(),
+        Some(Component::Prefix(prefix))
+            if matches!(prefix.kind(), Prefix::Disk(drive) | Prefix::VerbatimDisk(drive) if drive.to_ascii_uppercase() == b'C')
+    )
+}
+
+#[cfg(not(windows))]
+fn is_system_drive_path(_path: &Path) -> bool {
+    false
+}
+
+fn persist_output(output_dir: Option<PathBuf>, output_name: &str, output_bytes: &[u8]) -> Result<Option<String>, String> {
+    let Some(output_dir) = output_dir else {
+        return Ok(None);
+    };
+
+    fs::create_dir_all(&output_dir).map_err(|error| format!("Could not create save folder: {error}"))?;
+    let saved_path = unique_output_path(&output_dir, output_name);
+    fs::write(&saved_path, output_bytes).map_err(|error| format!("Could not save output copy: {error}"))?;
+
+    Ok(Some(saved_path.to_string_lossy().to_string()))
+}
+
+fn unique_output_path(output_dir: &Path, output_name: &str) -> PathBuf {
+    let file_name = sanitize_file_name(output_name);
+    let path = Path::new(&file_name);
+    let stem = path
+        .file_stem()
+        .and_then(|value| value.to_str())
+        .filter(|value| !value.is_empty())
+        .unwrap_or("openforge-output");
+    let extension = path.extension().and_then(|value| value.to_str());
+
+    for index in 0..1_000 {
+        let candidate_name = if index == 0 {
+            file_name.clone()
+        } else if let Some(extension) = extension {
+            format!("{stem}-{index}.{extension}")
+        } else {
+            format!("{stem}-{index}")
+        };
+        let candidate = output_dir.join(candidate_name);
+
+        if !candidate.exists() {
+            return candidate;
+        }
+    }
+
+    output_dir.join(format!("{stem}-{}", unique_job_id().unwrap_or_else(|_| "openforge-output".into())))
 }
 
 fn unique_job_id() -> Result<String, String> {
@@ -350,6 +475,27 @@ fn sanitize_component(value: &str) -> String {
         .collect::<String>()
         .trim_matches('-')
         .to_string()
+}
+
+fn sanitize_file_name(value: &str) -> String {
+    let sanitized = value
+        .chars()
+        .map(|character| {
+            if character.is_ascii_alphanumeric() || matches!(character, '-' | '_' | '.') {
+                character
+            } else {
+                '-'
+            }
+        })
+        .collect::<String>()
+        .trim_matches(&['-', '.'][..])
+        .to_string();
+
+    if sanitized.is_empty() {
+        "openforge-output".into()
+    } else {
+        sanitized
+    }
 }
 
 fn compact_log(value: &str) -> String {

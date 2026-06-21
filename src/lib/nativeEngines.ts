@@ -15,12 +15,18 @@ export type NativeRuntimeStatus = {
   detail: string
 }
 
+export type NativeFolders = {
+  workDir: string
+  outputDir: string
+}
+
 export type DocumentOutputFormat = 'html' | 'docx' | 'markdown' | 'epub'
 
 export type NativeTranscodeResult = {
   name: string
   blob: Blob
   log: string
+  savedPath?: string
 }
 
 export const nativeEngineCatalog: NativeEngine[] = [
@@ -107,7 +113,7 @@ export function getNativeCommandPreview(engine: NativeEngine) {
   return `${engine.command} via ${engine.sidecarName} sidecar`
 }
 
-export async function transcodeMediaFile(file: File): Promise<NativeTranscodeResult> {
+export async function transcodeMediaFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
     throw new Error('Native media conversion requires the OpenForge desktop app.')
   }
@@ -118,11 +124,13 @@ export async function transcodeMediaFile(file: File): Promise<NativeTranscodeRes
     mimeType: string
     bytesBase64: string
     log: string
+    savedPath?: string
   }>('transcode_media', {
     request: {
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
       outputExtension: 'mp4',
+      folders: normalizeNativeFolders(folders),
     },
   })
 
@@ -130,12 +138,14 @@ export async function transcodeMediaFile(file: File): Promise<NativeTranscodeRes
     name: artifact.name,
     blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
     log: artifact.log,
+    savedPath: artifact.savedPath,
   }
 }
 
 export async function convertDocumentFile(
   file: File,
   outputFormat: DocumentOutputFormat,
+  folders?: NativeFolders,
 ): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
     throw new Error('Native document conversion requires the OpenForge desktop app.')
@@ -147,11 +157,13 @@ export async function convertDocumentFile(
     mimeType: string
     bytesBase64: string
     log: string
+    savedPath?: string
   }>('convert_document', {
     request: {
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
       outputFormat,
+      folders: normalizeNativeFolders(folders),
     },
   })
 
@@ -159,10 +171,11 @@ export async function convertDocumentFile(
     name: artifact.name,
     blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
     log: artifact.log,
+    savedPath: artifact.savedPath,
   }
 }
 
-export async function optimizePdfFile(file: File): Promise<NativeTranscodeResult> {
+export async function optimizePdfFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
     throw new Error('Native PDF optimization requires the OpenForge desktop app.')
   }
@@ -173,10 +186,12 @@ export async function optimizePdfFile(file: File): Promise<NativeTranscodeResult
     mimeType: string
     bytesBase64: string
     log: string
+    savedPath?: string
   }>('optimize_pdf', {
     request: {
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
+      folders: normalizeNativeFolders(folders),
     },
   })
 
@@ -184,6 +199,16 @@ export async function optimizePdfFile(file: File): Promise<NativeTranscodeResult
     name: artifact.name,
     blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
     log: artifact.log,
+    savedPath: artifact.savedPath,
+  }
+}
+
+function normalizeNativeFolders(folders?: NativeFolders) {
+  if (!folders) return undefined
+
+  return {
+    workDir: folders.workDir.trim(),
+    outputDir: folders.outputDir.trim(),
   }
 }
 

@@ -1,7 +1,7 @@
 {
   "name": "openforge",
   "private": false,
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Local-first file conversion and PDF toolbox.",
   "license": "AGPL-3.0-only",
   "type": "module",

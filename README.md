@@ -15,6 +15,7 @@ The aim is simple: give people the everyday converter tools they pay subscriptio
 - Desktop FFmpeg audio/video transcode to MP4 through a Tauri command.
 - Desktop Pandoc document conversion to HTML, DOCX, Markdown, and EPUB.
 - Desktop qpdf PDF repair, compression, and linearization.
+- Desktop work/save folder settings with D:-drive defaults.
 - Windows MSI and NSIS installer outputs.
 
 ## Native Engine Pack
@@ -33,6 +34,11 @@ Planned engines:
 - Ghostscript for PDF rasterization and deeper compression.
 
 OpenForge keeps this workspace's project, outputs, toolchains, build caches, and working directories away from the system drive where the tooling allows it. Tauri's Windows bundler cache is moved back to `D:\Codex\OpenForge\tools\local-appdata\tauri` after packaging.
+
+Native desktop jobs default to:
+
+- Work folder: `D:\Codex\OpenForge\work`
+- Save folder: `D:\Codex\OpenForge\outputs\converted`
 
 ## Development
 
@@ -80,8 +86,8 @@ npm.cmd run desktop:build
 
 Current release artifacts are copied to `D:\Codex\OpenForge\outputs`:
 
-- `OpenForge_0.3.0_x64-setup.exe`
-- `OpenForge_0.3.0_x64_en-US.msi`
+- `OpenForge_0.4.0_x64-setup.exe`
+- `OpenForge_0.4.0_x64_en-US.msi`
 - `openforge-static.zip`
 
 ## Desktop Prerequisites

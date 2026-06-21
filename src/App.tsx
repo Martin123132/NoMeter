@@ -6,10 +6,13 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  FolderOutput,
+  HardDrive,
   History,
   Image,
   LockKeyhole,
   Play,
+  RotateCcw,
   Scissors,
   Settings2,
   ShieldCheck,
@@ -37,7 +40,9 @@ import {
   optimizePdfFile,
   transcodeMediaFile,
   type DocumentOutputFormat,
+  type NativeFolders,
   type NativeRuntimeStatus,
+  type NativeTranscodeResult,
 } from './lib/nativeEngines'
 import './App.css'
 
@@ -68,6 +73,7 @@ type ExportArtifact = {
   action: string
   sourceCount: number
   createdAt: string
+  savedPath?: string
 }
 
 type NavItem = {
@@ -136,6 +142,13 @@ const toolOptions: ToolOption[] = [
 
 const browserImageExtensions = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'])
 
+const defaultNativeFolders: NativeFolders = {
+  workDir: 'D:\\Codex\\OpenForge\\work',
+  outputDir: 'D:\\Codex\\OpenForge\\outputs\\converted',
+}
+
+const nativeFolderStorageKey = 'openforge.nativeFolders.v1'
+
 const statusLabels: Record<JobStatus, string> = {
   ready: 'Ready',
   running: 'Running',
@@ -151,6 +164,7 @@ function App() {
   const [exports, setExports] = useState<ExportArtifact[]>([])
   const [imageFormat, setImageFormat] = useState<ImageFormat>('webp')
   const [documentFormat, setDocumentFormat] = useState<DocumentOutputFormat>('html')
+  const [nativeFolders, setNativeFolders] = useState<NativeFolders>(loadNativeFolders)
   const [quality, setQuality] = useState(82)
   const [preserveNames, setPreserveNames] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
@@ -175,6 +189,8 @@ function App() {
     return { ready, done, blocked, total: jobs.length }
   }, [jobs])
 
+  const nativeFolderIssue = useMemo(() => validateNativeFolders(nativeFolders), [nativeFolders])
+
   useEffect(() => {
     let active = true
 
@@ -188,6 +204,14 @@ function App() {
       active = false
     }
   }, [])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(nativeFolderStorageKey, JSON.stringify(nativeFolders))
+    } catch {
+      // Local storage is a convenience for the desktop UI; conversion should keep working without it.
+    }
+  }, [nativeFolders])
 
   const addFiles = useCallback(
     (fileList: FileList | File[]) => {
@@ -275,6 +299,14 @@ function App() {
       setBanner({
         tone: 'warning',
         text: 'The qpdf optimizer is wired, but this browser preview can only run browser-local PDF jobs.',
+      })
+      return
+    }
+
+    if (requiresDesktopTool(activeTool) && nativeFolderIssue) {
+      setBanner({
+        tone: 'warning',
+        text: nativeFolderIssue,
       })
       return
     }
@@ -459,13 +491,13 @@ function App() {
       })
 
       try {
-        const result = await optimizePdfFile(job.file)
-        const artifact = createArtifact(result.blob, result.name, 'qpdf optimize', 1)
+        const result = await optimizePdfFile(job.file, nativeFolders)
+        const artifact = createArtifact(result.blob, result.name, 'qpdf optimize', 1, result.savedPath)
         setExports((current) => [artifact, ...current])
         updateJob(job.id, {
           status: 'done',
           progress: 100,
-          message: `${formatBytes(result.blob.size)} optimized PDF ready`,
+          message: nativeOutputMessage(result, 'optimized PDF ready'),
           outputName: result.name,
         })
         completed += 1
@@ -498,13 +530,13 @@ function App() {
       })
 
       try {
-        const result = await transcodeMediaFile(job.file)
-        const artifact = createArtifact(result.blob, result.name, 'FFmpeg transcode', 1)
+        const result = await transcodeMediaFile(job.file, nativeFolders)
+        const artifact = createArtifact(result.blob, result.name, 'FFmpeg transcode', 1, result.savedPath)
         setExports((current) => [artifact, ...current])
         updateJob(job.id, {
           status: 'done',
           progress: 100,
-          message: `${formatBytes(result.blob.size)} MP4 export ready`,
+          message: nativeOutputMessage(result, 'MP4 export ready'),
           outputName: result.name,
         })
         completed += 1
@@ -537,13 +569,13 @@ function App() {
       })
 
       try {
-        const result = await convertDocumentFile(job.file, documentFormat)
-        const artifact = createArtifact(result.blob, result.name, 'Pandoc conversion', 1)
+        const result = await convertDocumentFile(job.file, documentFormat, nativeFolders)
+        const artifact = createArtifact(result.blob, result.name, 'Pandoc conversion', 1, result.savedPath)
         setExports((current) => [artifact, ...current])
         updateJob(job.id, {
           status: 'done',
           progress: 100,
-          message: `${formatBytes(result.blob.size)} document export ready`,
+          message: nativeOutputMessage(result, 'document export ready'),
           outputName: result.name,
         })
         completed += 1
@@ -745,6 +777,7 @@ function App() {
                           {artifact.action} - {artifact.sourceCount} source
                           {artifact.sourceCount === 1 ? '' : 's'} - {formatBytes(artifact.size)}
                         </span>
+                        {artifact.savedPath ? <code>{artifact.savedPath}</code> : null}
                       </div>
                       <Download size={18} />
                     </a>
@@ -852,6 +885,45 @@ function App() {
               <div className={nativeStatus.available ? 'native-status ready' : 'native-status'}>
                 <strong>{nativeStatus.label}</strong>
                 <span>{nativeStatus.detail}</span>
+              </div>
+              <div className="folder-settings">
+                <label className="path-field">
+                  <span>
+                    <HardDrive size={15} />
+                    Work folder
+                  </span>
+                  <input
+                    type="text"
+                    value={nativeFolders.workDir}
+                    spellCheck={false}
+                    onChange={(event) =>
+                      setNativeFolders((current) => ({ ...current, workDir: event.target.value }))
+                    }
+                  />
+                </label>
+                <label className="path-field">
+                  <span>
+                    <FolderOutput size={15} />
+                    Save folder
+                  </span>
+                  <input
+                    type="text"
+                    value={nativeFolders.outputDir}
+                    spellCheck={false}
+                    onChange={(event) =>
+                      setNativeFolders((current) => ({ ...current, outputDir: event.target.value }))
+                    }
+                  />
+                </label>
+                <div className="folder-actions">
+                  <button type="button" className="ghost-button" onClick={() => setNativeFolders(defaultNativeFolders)}>
+                    <RotateCcw size={16} />
+                    Defaults
+                  </button>
+                  <span className={nativeFolderIssue ? 'folder-warning' : 'folder-note'}>
+                    {nativeFolderIssue ?? (nativeStatus.available ? 'Desktop saves native outputs.' : 'Stored for desktop runs.')}
+                  </span>
+                </div>
               </div>
               <div className="engine-list">
                 {nativeEngineCatalog.map((engine) => (
@@ -1091,7 +1163,13 @@ function isRunnableForTool(job: QueueJob, tool: ToolId) {
   return false
 }
 
-function createArtifact(blob: Blob, name: string, action: string, sourceCount: number): ExportArtifact {
+function createArtifact(
+  blob: Blob,
+  name: string,
+  action: string,
+  sourceCount: number,
+  savedPath?: string,
+): ExportArtifact {
   return {
     id: createId(),
     name,
@@ -1100,7 +1178,55 @@ function createArtifact(blob: Blob, name: string, action: string, sourceCount: n
     action,
     sourceCount,
     createdAt: new Date().toISOString(),
+    savedPath,
   }
+}
+
+function loadNativeFolders(): NativeFolders {
+  try {
+    const stored = localStorage.getItem(nativeFolderStorageKey)
+    if (!stored) return defaultNativeFolders
+    const parsed = JSON.parse(stored) as Partial<NativeFolders>
+
+    return {
+      workDir: typeof parsed.workDir === 'string' && parsed.workDir.trim() ? parsed.workDir : defaultNativeFolders.workDir,
+      outputDir:
+        typeof parsed.outputDir === 'string' && parsed.outputDir.trim()
+          ? parsed.outputDir
+          : defaultNativeFolders.outputDir,
+    }
+  } catch {
+    return defaultNativeFolders
+  }
+}
+
+function validateNativeFolders(folders: NativeFolders) {
+  const workDir = folders.workDir.trim()
+  const outputDir = folders.outputDir.trim()
+
+  if (!isAbsoluteFolderPath(workDir)) return 'Use an absolute work folder path.'
+  if (!isAbsoluteFolderPath(outputDir)) return 'Use an absolute save folder path.'
+  if (isCDrivePath(workDir) || isCDrivePath(outputDir)) {
+    return 'Choose non-system folders; this OpenForge workspace stays off C:.'
+  }
+
+  return null
+}
+
+function isAbsoluteFolderPath(value: string) {
+  return /^[a-z]:[\\/]/i.test(value) || value.startsWith('\\\\') || value.startsWith('/')
+}
+
+function isCDrivePath(value: string) {
+  return /^c:[\\/]/i.test(value.trim())
+}
+
+function requiresDesktopTool(tool: ToolId) {
+  return tool === 'native-engine' || tool === 'document-convert' || tool === 'pdf-optimize'
+}
+
+function nativeOutputMessage(result: NativeTranscodeResult, fallback: string) {
+  return result.savedPath ? `Saved to ${result.savedPath}` : `${formatBytes(result.blob.size)} ${fallback}`
 }
 
 function statusIcon(status: JobStatus) {

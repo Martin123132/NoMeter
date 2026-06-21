@@ -35,6 +35,7 @@ The Tauri v2 desktop app builds successfully on Windows.
 - qpdf sidecar: `src-tauri/binaries/qpdf-x86_64-pc-windows-msvc.exe`
 - qpdf runtime DLLs: `src-tauri/binaries/*.dll`
 - Work directory: `D:\Codex\OpenForge\work`
+- Native save directory: `D:\Codex\OpenForge\outputs\converted`
 - Bundler cache moved to: `D:\Codex\OpenForge\tools\local-appdata\tauri`
 
 Run:
@@ -51,8 +52,10 @@ Build installers with:
 npm.cmd run desktop:build
 ```
 
-The current FFmpeg adapter accepts an audio/video `File`, writes it to the D:-scoped work folder, runs the bundled FFmpeg sidecar, and returns a downloadable MP4 blob to the React job queue.
+The desktop UI can override the native work and save folders. The default folders remain D:-scoped for this workspace, and the web preview stores the preference without writing files.
 
-The current Pandoc adapter accepts a document `File`, writes it to the D:-scoped work folder, runs the bundled Pandoc sidecar, and returns downloadable HTML, DOCX, Markdown, or EPUB.
+The current FFmpeg adapter accepts an audio/video `File`, writes it to the configured work folder, runs the bundled FFmpeg sidecar, copies the output to the configured save folder, and returns a downloadable MP4 blob to the React job queue.
 
-The current qpdf adapter accepts a PDF `File`, writes it to the D:-scoped work folder, runs the bundled qpdf sidecar, and returns a repaired, compressed, linearized PDF.
+The current Pandoc adapter accepts a document `File`, writes it to the configured work folder, runs the bundled Pandoc sidecar, copies the output to the configured save folder, and returns downloadable HTML, DOCX, Markdown, or EPUB.
+
+The current qpdf adapter accepts a PDF `File`, writes it to the configured work folder, runs the bundled qpdf sidecar, copies the output to the configured save folder, and returns a repaired, compressed, linearized PDF.

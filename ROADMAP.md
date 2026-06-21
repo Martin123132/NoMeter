@@ -22,7 +22,7 @@
 - [ ] Add Ghostscript PDF rasterization/compression adapter.
 - [ ] Add OCRmyPDF/Tesseract OCR adapter.
 - [x] Add D:-scoped working directory defaults for this workspace.
-- [ ] Add user-configurable working directory picker.
+- [x] Add user-configurable work/save directory setting.
 
 ## Phase 3: Job Engine
 
