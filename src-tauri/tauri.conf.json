@@ -1,0 +1,36 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "OpenForge",
+  "version": "0.1.0",
+  "identifier": "dev.openforge.app",
+  "build": {
+    "beforeDevCommand": "npm.cmd run dev -- --host 127.0.0.1",
+    "beforeBuildCommand": "npm.cmd run build",
+    "devUrl": "http://127.0.0.1:5173",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "OpenForge",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 980,
+        "minHeight": 680,
+        "resizable": true,
+        "dragDropEnabled": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "category": "Utility",
+    "shortDescription": "Local-first file conversion and PDF tools",
+    "longDescription": "OpenForge converts, merges, splits, and prepares files locally without accounts, credits, or uploads."
+  }
+}
