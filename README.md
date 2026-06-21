@@ -11,20 +11,24 @@ The aim is simple: give people the everyday converter tools they pay subscriptio
 - PDF split-to-ZIP in the browser with `pdf-lib` and `jszip`.
 - Downloadable exports from local browser memory.
 - A responsive React/Vite workbench.
-- A Tauri v2 desktop scaffold for the native engine pack.
+- A Tauri v2 desktop build with bundled FFmpeg and FFprobe sidecars.
+- Desktop FFmpeg audio/video transcode to MP4 through a Tauri command.
+- Windows MSI and NSIS installer outputs.
 
 ## Native Engine Pack
 
-The next layer is the desktop runtime. The scaffold is present under `src-tauri/`, but this machine does not currently have Rust/Cargo installed, so the desktop binary has not been compiled here yet.
+The desktop runtime is present under `src-tauri/`. On this workspace, Rust/Cargo live under `D:\Codex\Toolchains\rust`, FFmpeg lives under `D:\Codex\OpenForge\tools\ffmpeg`, and OpenForge work files default to `D:\Codex\OpenForge\work`.
+
+Current engine:
+
+- FFmpeg for audio/video conversion to MP4.
 
 Planned engines:
-
-- FFmpeg for audio/video conversion.
 - Pandoc for document conversion.
 - OCRmyPDF and Tesseract for OCR.
 - qpdf and Ghostscript for PDF repair/compression.
 
-OpenForge will default all project, output, and working directories away from the system drive when possible. For the current workspace, files live under `D:\Codex\OpenForge`.
+OpenForge keeps this workspace's project, outputs, toolchains, build caches, and working directories away from the system drive where the tooling allows it. Tauri's Windows bundler cache is moved back to `D:\Codex\OpenForge\tools\local-appdata\tauri` after packaging.
 
 ## Development
 
@@ -52,17 +56,36 @@ Check native prerequisites:
 npm.cmd run native:doctor
 ```
 
-Run the desktop app after installing Rust and platform prerequisites:
+Sync FFmpeg sidecars after downloading or updating FFmpeg:
+
+```powershell
+npm.cmd run native:sync-ffmpeg
+```
+
+Run the desktop app:
 
 ```powershell
 npm.cmd run desktop:dev
 ```
 
+Build the desktop installers:
+
+```powershell
+npm.cmd run desktop:build
+```
+
+Current release artifacts are copied to `D:\Codex\OpenForge\outputs`:
+
+- `OpenForge_0.1.0_x64-setup.exe`
+- `OpenForge_0.1.0_x64_en-US.msi`
+- `openforge-static.zip`
+
 ## Desktop Prerequisites
 
 - Rust and Cargo.
-- WebView2 Runtime on Windows.
-- Any native engines you want to use, either on `PATH` or bundled as Tauri sidecars later.
+- Microsoft C++ Build Tools and WebView2 Runtime on Windows.
+- FFmpeg and FFprobe synced into `src-tauri/binaries` with the platform target-triple suffix.
+- Any additional native engines you want to use, either on `PATH` or bundled as Tauri sidecars later.
 
 ## License
 

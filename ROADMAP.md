@@ -12,13 +12,16 @@
 
 - [x] Tauri v2 scaffold.
 - [x] Native engine catalog and readiness checks.
-- [ ] Install Rust/Cargo on the build machine.
-- [ ] Compile desktop dev build.
-- [ ] Add FFmpeg sidecar adapter.
+- [x] Install Rust/Cargo on the build machine.
+- [x] Compile desktop release build.
+- [x] Add FFmpeg sidecar adapter.
+- [x] Build Windows MSI installer.
+- [x] Build Windows NSIS installer.
 - [ ] Add Pandoc sidecar adapter.
 - [ ] Add qpdf/Ghostscript PDF compression adapter.
 - [ ] Add OCRmyPDF/Tesseract OCR adapter.
-- [ ] Add configurable working directory defaults.
+- [x] Add D:-scoped working directory defaults for this workspace.
+- [ ] Add user-configurable working directory picker.
 
 ## Phase 3: Job Engine
 
@@ -32,7 +35,7 @@
 ## Phase 4: Release
 
 - [ ] Windows portable build.
-- [ ] Windows installer.
+- [x] Windows installer.
 - [ ] GitHub Actions release pipeline.
 - [ ] macOS build.
 - [ ] Linux build.

@@ -12,7 +12,13 @@ dist
 dist-ssr
 src-tauri/target
 src-tauri/gen
+src-tauri/binaries/*.exe
+src-tauri/binaries/*.dll
+src-tauri/binaries/*.pdb
+src-tauri/binaries/*.zip
+src-tauri/binaries/*.7z
 openforge-work
+tools
 *.tsbuildinfo
 *.local
 

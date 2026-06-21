@@ -33,6 +33,7 @@ import {
   getNativeCommandPreview,
   getNativeRuntimeStatus,
   nativeEngineCatalog,
+  transcodeMediaFile,
   type NativeRuntimeStatus,
 } from './lib/nativeEngines'
 import './App.css'
@@ -195,9 +196,9 @@ function App() {
   }
 
   const loadSampleFiles = useCallback(async () => {
-    const sampleFiles = await createSampleFiles()
+    const sampleFiles = await createSampleFiles(activeTool === 'native-engine')
     addFiles(sampleFiles)
-  }, [addFiles])
+  }, [activeTool, addFiles])
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -234,12 +235,10 @@ function App() {
 
     const compatibleJobs = jobs.filter((job) => isRunnableForTool(job, activeTool))
 
-    if (activeTool === 'native-engine') {
+    if (activeTool === 'native-engine' && !nativeStatus.available) {
       setBanner({
         tone: 'warning',
-        text: nativeStatus.available
-          ? 'The desktop bridge is present. Engine sidecars are scaffolded and need adapter implementation next.'
-          : 'The native engine pack is scaffolded, but this browser preview can only run browser-local jobs.',
+        text: 'The FFmpeg native pack is wired, but this browser preview can only run browser-local jobs.',
       })
       return
     }
@@ -250,7 +249,9 @@ function App() {
         text:
           activeTool === 'image-convert'
             ? 'Add PNG, JPG, WebP, GIF, BMP, or SVG files before running image conversion.'
-            : 'Add one or more PDF files before running this PDF job.',
+            : activeTool === 'native-engine'
+              ? 'Add one or more audio or video files before running FFmpeg conversion.'
+              : 'Add one or more PDF files before running this PDF job.',
       })
       return
     }
@@ -269,6 +270,10 @@ function App() {
 
       if (activeTool === 'pdf-split') {
         await runPdfSplit(compatibleJobs)
+      }
+
+      if (activeTool === 'native-engine') {
+        await runNativeMediaJobs(compatibleJobs)
       }
     } finally {
       setIsRunning(false)
@@ -395,6 +400,45 @@ function App() {
     }
   }
 
+  const runNativeMediaJobs = async (compatibleJobs: QueueJob[]) => {
+    let completed = 0
+
+    for (const job of compatibleJobs) {
+      updateJob(job.id, {
+        status: 'running',
+        progress: 24,
+        message: 'Handing media to FFmpeg sidecar',
+      })
+
+      try {
+        const result = await transcodeMediaFile(job.file)
+        const artifact = createArtifact(result.blob, result.name, 'FFmpeg transcode', 1)
+        setExports((current) => [artifact, ...current])
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: `${formatBytes(result.blob.size)} MP4 export ready`,
+          outputName: result.name,
+        })
+        completed += 1
+      } catch (error) {
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'FFmpeg conversion failed.',
+        })
+      }
+    }
+
+    setBanner({
+      tone: completed > 0 ? 'success' : 'danger',
+      text:
+        completed > 0
+          ? `${completed} media file${completed === 1 ? '' : 's'} converted with FFmpeg.`
+          : 'No FFmpeg exports were created.',
+    })
+  }
+
   const updateJob = (id: string, patch: Partial<QueueJob>) => {
     setJobs((current) => current.map((job) => (job.id === id ? { ...job, ...patch } : job)))
   }
@@ -471,7 +515,7 @@ function App() {
               </div>
               <div>
                 <h2>Drop files into the forge</h2>
-                <p>Images and PDFs run locally in this web MVP; native engines are queued next.</p>
+                <p>Images and PDFs run in the browser; audio and video run through FFmpeg in the desktop app.</p>
               </div>
               <div className="drop-actions">
                 <label className="file-picker">
@@ -635,6 +679,11 @@ function App() {
                     />
                   </label>
                 </>
+              ) : activeTool === 'native-engine' ? (
+                <div className="pdf-output">
+                  <AudioWaveform size={18} />
+                  <span>MP4 H.264</span>
+                </div>
               ) : (
                 <div className="pdf-output">
                   <CheckCircle2 size={18} />
@@ -748,7 +797,7 @@ function createJob(file: File): QueueJob {
   }
 }
 
-async function createSampleFiles() {
+async function createSampleFiles(includeMedia = false) {
   const svg = [
     '<svg xmlns="http://www.w3.org/2000/svg" width="960" height="540" viewBox="0 0 960 540">',
     '<rect width="960" height="540" rx="28" fill="#ecfbf4"/>',
@@ -794,7 +843,48 @@ async function createSampleFiles() {
     type: 'application/pdf',
   })
 
-  return [image, pdfFile]
+  const files = [image, pdfFile]
+
+  if (includeMedia) {
+    files.unshift(createSampleAudioFile())
+  }
+
+  return files
+}
+
+function createSampleAudioFile() {
+  const sampleRate = 22_050
+  const durationSeconds = 1
+  const sampleCount = sampleRate * durationSeconds
+  const buffer = new ArrayBuffer(44 + sampleCount * 2)
+  const view = new DataView(buffer)
+
+  writeAscii(view, 0, 'RIFF')
+  view.setUint32(4, 36 + sampleCount * 2, true)
+  writeAscii(view, 8, 'WAVE')
+  writeAscii(view, 12, 'fmt ')
+  view.setUint32(16, 16, true)
+  view.setUint16(20, 1, true)
+  view.setUint16(22, 1, true)
+  view.setUint32(24, sampleRate, true)
+  view.setUint32(28, sampleRate * 2, true)
+  view.setUint16(32, 2, true)
+  view.setUint16(34, 16, true)
+  writeAscii(view, 36, 'data')
+  view.setUint32(40, sampleCount * 2, true)
+
+  for (let index = 0; index < sampleCount; index += 1) {
+    const sample = Math.sin((index / sampleRate) * 440 * Math.PI * 2)
+    view.setInt16(44 + index * 2, sample * 0x3fff, true)
+  }
+
+  return new File([buffer], 'openforge-tone.wav', { type: 'audio/wav' })
+}
+
+function writeAscii(view: DataView, offset: number, value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    view.setUint8(offset + index, value.charCodeAt(index))
+  }
 }
 
 function classifyFile(file: File): FileKind {
@@ -817,7 +907,9 @@ function isBrowserReady(file: File, kind: FileKind) {
 }
 
 function isRunnableForTool(job: QueueJob, tool: ToolId) {
-  if (job.status === 'blocked' || job.status === 'running') return false
+  if (job.status === 'running') return false
+  if (tool === 'native-engine') return job.kind === 'media'
+  if (job.status === 'blocked') return false
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'
   return false

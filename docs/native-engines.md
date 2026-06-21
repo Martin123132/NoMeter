@@ -24,12 +24,26 @@ OpenForge's browser MVP already handles image conversion, PDF merge, and PDF spl
 
 ## Current Status
 
-The Tauri v2 scaffold exists in `src-tauri/`.
+The Tauri v2 desktop app builds successfully on Windows.
 
-This machine currently does not have Rust/Cargo installed, so desktop compilation is blocked until the Rust toolchain is installed. Run:
+- Rust/Cargo: `D:\Codex\Toolchains\rust`
+- FFmpeg tools: `D:\Codex\OpenForge\tools\ffmpeg`
+- FFmpeg sidecars: `src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe` and `ffprobe-x86_64-pc-windows-msvc.exe`
+- Work directory: `D:\Codex\OpenForge\work`
+- Bundler cache moved to: `D:\Codex\OpenForge\tools\local-appdata\tauri`
+
+Run:
 
 ```powershell
 npm.cmd run native:doctor
 ```
 
-after installing Rust to verify prerequisites.
+to verify prerequisites. Pandoc, qpdf, Ghostscript, Tesseract, and OCRmyPDF are expected warnings until their adapters are added.
+
+Build installers with:
+
+```powershell
+npm.cmd run desktop:build
+```
+
+The current FFmpeg adapter accepts an audio/video `File`, writes it to the D:-scoped work folder, runs the bundled FFmpeg sidecar, and returns a downloadable MP4 blob to the React job queue.
