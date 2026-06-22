@@ -75,11 +75,12 @@ The following outputs are demo-safe and sanitized:
 For a public-safe release preparation pass (without publishing a release), use:
 
 ```powershell
-npm run release:provenance
-npm run release:checksums
+npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 ```
 
-This generates provenance metadata and SHA-256 checksums for release candidates (installers/static bundle), both written to the artifact folder.
+This runs lint + web build + native doctor, then writes provenance and checksums for release candidates (installers/static bundle) to the artifact folder.
+
+Optional flags are available for local-only runs (for example `--skip-build`, `--skip-doctor`, `--non-strict`).
 
 See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md).
 

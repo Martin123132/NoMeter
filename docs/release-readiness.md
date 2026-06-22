@@ -34,6 +34,28 @@ These are expected in an output directory you control during release prep, typic
    - review generated checksums file
 5. Include a short human-readable note in the release body about the artifact set and OS/arch targets.
 
+## One-command local release prep
+
+Run the full local preparation path in one command:
+
+```powershell
+npm run release:prepare -- --artifact-dir D:\path\to\artifacts
+```
+
+This runs (in order):
+
+- `npm run lint`
+- `npm run build`
+- `npm run native:doctor`
+- `npm run release:provenance -- --artifact-dir <path>`
+- `npm run release:checksums -- --artifact-dir <path>`
+
+To run in constrained environments (e.g., if you are only validating metadata), use:
+
+```powershell
+npm run release:prepare -- --artifact-dir D:\path\to\artifacts --skip-build --skip-doctor --non-strict
+```
+
 ## Provenance capture
 
 Collect these values with a small reproducible file:
