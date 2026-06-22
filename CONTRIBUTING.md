@@ -6,7 +6,7 @@ NoMeter is built for practical local-first utility: no uploads, no accounts, no 
 
 - Keep file processing local by default.
 - Do not add telemetry, remote processing, or account flows without a clear opt-in design.
-- Do not introduce C-drive-only assumptions. Paths must be configurable and should work from `D:\Codex\OpenForge` in this workspace.
+- Do not introduce fixed-drive assumptions. Paths must be configurable and should work from different installation locations.
 - Prefer existing engines over custom parsers for complex formats.
 - Keep subscriptions out of the core project.
 
@@ -32,7 +32,7 @@ Native engine adapters should:
 
 - Build commands from structured arguments, not interpolated shell strings.
 - Use allowlisted engine IDs.
-- Keep temporary and output paths outside the system drive by default.
+- Keep temporary and output paths off the system drive by default when the host filesystem allows it.
 - Clean up temporary files after each job.
 - Report progress in the common job model.
 

@@ -1,104 +1,104 @@
 # NoMeter
 
-NoMeter is a local-first, open-source file conversion and PDF toolbox.
+[![CI](https://github.com/Martin123132/NoMeter/actions/workflows/ci.yml/badge.svg)](https://github.com/Martin123132/NoMeter/actions/workflows/ci.yml)
 
-The aim is simple: give people the everyday converter tools they pay subscriptions for, without credits, limits, watermarks, or uploading private files to someone else's server.
+NoMeter is an **open-source, local-first conversion toolbox** for browser and desktop workflows. Files stay on your machine by default; there are no uploads, no accounts, and no usage limits.
 
-## What Works Today
+## What this project does
 
-- Batch image conversion in the browser: SVG, PNG, JPG, WebP, GIF, BMP to WebP, PNG, or JPEG.
-- PDF merge in the browser with `pdf-lib`.
-- PDF split-to-ZIP in the browser with `pdf-lib` and `jszip`.
-- Downloadable exports from local browser memory.
-- A responsive React/Vite workbench.
-- A Tauri v2 desktop build with bundled FFmpeg, FFprobe, Pandoc, and qpdf sidecars.
-- Desktop FFmpeg audio/video transcode to MP4 through a Tauri command.
-- Desktop Pandoc document conversion to HTML, DOCX, Markdown, and EPUB.
-- Desktop qpdf PDF repair, compression, and linearization.
-- Desktop work/save folder settings with D:-drive defaults.
-- Windows MSI and NSIS installer outputs.
+- Convert images in-browser (SVG, PNG, JPG, WebP, GIF, BMP).
+- Merge PDF files in-browser.
+- Split PDFs into ZIP archives in-browser.
+- Run desktop conversions with bundled sidecar engines:
+  - FFmpeg: media transcoding to MP4.
+  - Pandoc: document output to HTML, DOCX, Markdown, EPUB.
+  - qpdf: PDF repair/compression/linearization.
+- Configure native work and save directories (with defaults that can be set to avoid system-drive usage).
 
-## Native Engine Pack
+## Quick start
 
-The desktop runtime is present under `src-tauri/`. On this workspace, Rust/Cargo live under `D:\Codex\Toolchains\rust`, native tools live under `D:\Codex\OpenForge\tools`, and NoMeter work files default to `D:\Codex\OpenForge\work`.
-
-Current engines:
-
-- FFmpeg for audio/video conversion to MP4.
-- Pandoc for Markdown, HTML, DOCX, ODT, RTF, text, and EPUB document conversion.
-- qpdf for PDF repair, compression, and linearization.
-
-Planned engines:
-
-- OCRmyPDF and Tesseract for OCR.
-- Ghostscript for PDF rasterization and deeper compression.
-
-NoMeter keeps this workspace's project, outputs, toolchains, build caches, and working directories away from the system drive where the tooling allows it. Tauri's Windows bundler cache is moved back to `D:\Codex\OpenForge\tools\local-appdata\tauri` after packaging.
-
-Native desktop jobs default to:
-
-- Work folder: `D:\Codex\OpenForge\work`
-- Save folder: `D:\Codex\OpenForge\outputs\converted`
-
-## Development
+### 1) Install and run in the browser
 
 ```powershell
-npm.cmd install
-npm.cmd run dev
+npm install
+npm run dev
 ```
 
-Build the web app:
+Open the app at the URL shown by Vite.
+
+### 2) Native desktop mode (Tauri)
 
 ```powershell
-npm.cmd run lint
-npm.cmd run build
+npm run desktop:dev
 ```
 
-Preview the production build:
+Desktop mode enables the native engines above. Use the sidebars to switch between recipes.
+
+### 3) Build artifacts
 
 ```powershell
-npm.cmd run preview -- --host 127.0.0.1 --port 4173
+npm run lint
+npm run build
+npm run desktop:build   # Windows installer build
 ```
 
-Check native prerequisites:
+## Usage guide
+
+### Browser workflows
+
+- `image-convert`: image re-encode/format conversion with optional quality control.
+- `pdf-merge`: combine PDFs.
+- `pdf-split`: split PDF pages into ZIP archives.
+
+### Native workflows
+
+- `native-engine`: audio/video conversion with FFmpeg.
+- `document-convert`: document conversion with Pandoc.
+- `pdf-optimize`: PDF repair/compression with qpdf.
+
+### Runtime folders
+
+- Work folder: configurable in Settings.
+- Save folder: configurable in Settings.
+
+If you run on a machine with custom drives or folders, set your own values in the UI before queued native jobs.
+
+## Public proof / screenshots
+
+The following outputs are demo-safe and sanitized:
+
+- Native folder export artifact: [`docs/proof/nometer-folder-e2e.html`](docs/proof/nometer-folder-e2e.html)
+- Native run screenshot: [`docs/proof/nometer-folder-e2e.png`](docs/proof/nometer-folder-e2e.png)
+
+## Roadmap snapshot
+
+- Browser core is stable (images/PDF merge/split).
+- Native engine adapters (FFmpeg, Pandoc, qpdf) are wired and queue-integrated.
+- Remaining roadmap focuses on OCR support, richer document formats, and portable builds.
+
+Full roadmap details live in [`ROADMAP.md`](ROADMAP.md).
+
+## Development checks
+
+Run these before PRs:
 
 ```powershell
-npm.cmd run native:doctor
+npm run lint
+npm run build
+npm run native:doctor
 ```
 
-Sync native sidecars after downloading or updating native tools:
+`native:doctor` verifies local prerequisites and emits useful warnings for optional engines not yet bundled.
 
-```powershell
-npm.cmd run native:sync-sidecars
-```
+### Related scripts
 
-Run the desktop app:
-
-```powershell
-npm.cmd run desktop:dev
-```
-
-Build the desktop installers:
-
-```powershell
-npm.cmd run desktop:build
-```
-
-Current release artifacts are copied to `D:\Codex\OpenForge\outputs`:
-
-- `NoMeter_0.5.0_x64-setup.exe`
-- `NoMeter_0.5.0_x64_en-US.msi`
-- `nometer-static.zip`
-
-## Desktop Prerequisites
-
-- Rust and Cargo.
-- Microsoft C++ Build Tools and WebView2 Runtime on Windows.
-- FFmpeg, FFprobe, Pandoc, and qpdf synced into `src-tauri/binaries` with the platform target-triple suffix.
-- Any additional native engines you want to use, either on `PATH` or bundled as Tauri sidecars later.
+- `npm run native:sync-sidecars`: sync local native sidecars.
+- `npm run native:relocate-tauri-cache`: copy bundler cache back to configured toolchain-safe path.
 
 ## License
 
-NoMeter is licensed under AGPL-3.0-only. See `LICENSE`.
+NoMeter is licensed under **AGPL-3.0-only**. See [`LICENSE`](LICENSE).
 
-This is intentional: improvements made for network-hosted or productized versions should flow back to users.
+```text
+NoMeter mission: no credits, no limits, no uploads.
+```

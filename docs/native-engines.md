@@ -26,17 +26,19 @@ NoMeter's browser MVP already handles image conversion, PDF merge, and PDF split
 
 The Tauri v2 desktop app builds successfully on Windows.
 
-- Rust/Cargo: `D:\Codex\Toolchains\rust`
-- FFmpeg tools: `D:\Codex\OpenForge\tools\ffmpeg`
-- Pandoc tools: `D:\Codex\OpenForge\tools\pandoc`
-- qpdf tools: `D:\Codex\OpenForge\tools\qpdf`
-- FFmpeg sidecars: `src-tauri/binaries/ffmpeg-x86_64-pc-windows-msvc.exe` and `ffprobe-x86_64-pc-windows-msvc.exe`
-- Pandoc sidecar: `src-tauri/binaries/pandoc-x86_64-pc-windows-msvc.exe`
-- qpdf sidecar: `src-tauri/binaries/qpdf-x86_64-pc-windows-msvc.exe`
+Paths shown below are examples; they should be configurable via your local environment:
+
+- Rust/Cargo: `${OPENFORGE_TOOLCHAIN_ROOT}/rust` (example default: workspace toolchain root).
+- FFmpeg tools: `${OPENFORGE_ROOT}/tools/ffmpeg`
+- Pandoc tools: `${OPENFORGE_ROOT}/tools/pandoc`
+- qpdf tools: `${OPENFORGE_ROOT}/tools/qpdf`
+- FFmpeg sidecars: `src-tauri/binaries/ffmpeg-<host-triple>.exe` and `src-tauri/binaries/ffprobe-<host-triple>.exe`
+- Pandoc sidecar: `src-tauri/binaries/pandoc-<host-triple>.exe`
+- qpdf sidecar: `src-tauri/binaries/qpdf-<host-triple>.exe`
 - qpdf runtime DLLs: `src-tauri/binaries/*.dll`
-- Work directory: `D:\Codex\OpenForge\work`
-- Native save directory: `D:\Codex\OpenForge\outputs\converted`
-- Bundler cache moved to: `D:\Codex\OpenForge\tools\local-appdata\tauri`
+- Work directory: `${OPENFORGE_WORK_DIR}`
+- Native save directory: current UI-configured save path
+- Bundler cache moved to a configured cache-safe directory after packaging.
 
 Run:
 
@@ -52,7 +54,9 @@ Build installers with:
 npm.cmd run desktop:build
 ```
 
-The desktop UI can override the native work and save folders. The default folders remain D:-scoped for this workspace, and the web preview stores the preference without writing files.
+The desktop UI can override the native work and save folders. Defaults can be
+configured for local environments, and the web preview stores the preference without
+writing files.
 
 The current FFmpeg adapter accepts an audio/video `File`, writes it to the configured work folder, runs the bundled FFmpeg sidecar, copies the output to the configured save folder, and returns a downloadable MP4 blob to the React job queue.
 
