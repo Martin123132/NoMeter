@@ -70,6 +70,18 @@ The following outputs are demo-safe and sanitized:
 - Native folder export artifact: [`docs/proof/nometer-folder-e2e.html`](docs/proof/nometer-folder-e2e.html)
 - Native run screenshot: [`docs/proof/nometer-folder-e2e.png`](docs/proof/nometer-folder-e2e.png)
 
+## Release readiness
+
+For a public-safe release preparation pass (without publishing a release), use:
+
+```powershell
+npm run release:checksums
+```
+
+This generates SHA-256 checksums for release candidates (installers/static bundle) and writes `checksums.sha256` to the artifact folder.
+
+See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md).
+
 ## Roadmap snapshot
 
 - Browser core is stable (images/PDF merge/split).
