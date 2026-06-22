@@ -26,6 +26,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] `npm run native:doctor`
 - [ ] `npm run release:evidence`
 - [ ] `npm run release:evidence:run` (optional: full local run + log capture)
+- [ ] `npm run release:evidence:cleanup` (clean raw logs before sharing)
 
 ## Required evidence files
 
@@ -56,6 +57,7 @@ Preferred evidence log capture paths (for `release:evidence` defaults):
 - [ ] `release-notes.md` includes generated metadata and checksum table.
 - [ ] `release-notes.md` does **not** contain private/local machine paths.
 - [ ] No private files, secrets, or sensitive data are included in release notes or checked-in docs.
+- [ ] `tmp/release-evidence-check-logs/` is local-only and excluded from sharing.
 
 ## Public artifact rules
 

@@ -24,6 +24,7 @@
     "release:review-check": "node scripts/release-review-check.mjs",
     "release:evidence": "node scripts/release-evidence.mjs",
     "release:evidence:run": "node scripts/release-evidence-run.mjs",
+    "release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs",
     "release:evidence-index": "node scripts/release-evidence-index.mjs",
     "ci:maintenance-check": "node scripts/ci-maintenance-check.mjs",
     "release:first-release-check": "node scripts/first-release-check.mjs",

@@ -159,6 +159,20 @@ This writes an evidence sheet with:
 - expected artifact presence (`NoMeter_<version>_x64-setup.exe`, `NoMeter_<version>_x64_en-US.msi`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`)
 - public-safe review gates and sign-off fields
 
+## Evidence log hygiene
+
+Keep evidence logs local and disposable before sharing:
+
+- `tmp/release-evidence-check-logs/` is intentionally a local temp folder only.
+- It is gitignored and should not be attached to issues or PRs.
+- Run a cleanup after sharing:
+
+```powershell
+npm run release:evidence:cleanup
+```
+
+- For any public share, keep `docs/release-dry-run-evidence.md` only and scrub local filesystem paths from pasted snippets if present.
+
 ## First public release review checklist
 
 Before publishing a first public release, create a review issue from the GitHub template:

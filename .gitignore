@@ -21,6 +21,8 @@ openforge-work
 tools
 *.tsbuildinfo
 *.local
+tmp/release-evidence-check-logs/
+tmp/release-evidence-check-logs/*
 
 # Editor directories and files
 .vscode/*

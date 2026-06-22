@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 
 const repositoryRoot = process.cwd()
@@ -7,6 +7,8 @@ const readinessPath = resolve(repositoryRoot, 'docs', 'release-readiness.md')
 const issueTemplatePath = resolve(repositoryRoot, '.github', 'ISSUE_TEMPLATE', 'nometer-release-review.md')
 const evidenceRunbookPath = resolve(repositoryRoot, 'docs', 'release-dry-run-evidence.md')
 const packageJsonPath = resolve(repositoryRoot, 'package.json')
+const gitignorePath = resolve(repositoryRoot, '.gitignore')
+const evidenceCleanupScriptPath = resolve(repositoryRoot, 'scripts', 'release-evidence-cleanup.mjs')
 
 let failed = false
 
@@ -61,9 +63,11 @@ checkFileContains(readinessPath, 'release-readiness discoverability', [
   'ci:maintenance-check',
   'release:evidence',
   'release:evidence:run',
+  'release:evidence:cleanup',
   'tmp/release-evidence-check-logs',
   'release-dry-run-evidence.md',
   'Release dry-run evidence index',
+  'Evidence log hygiene',
 ])
 
 checkFileContains(checklistPath, 'first release evidence checklist coverage', [
@@ -71,8 +75,18 @@ checkFileContains(checklistPath, 'first release evidence checklist coverage', [
   'npm run release:evidence',
   'npm run release:evidence:run',
   'docs/release-dry-run-evidence.md',
+  'tmp/release-evidence-check-logs',
+  'npm run release:evidence:cleanup',
   'release:notes -- --artifact-dir <artifact-dir>',
   'release:first-release-check',
+])
+
+checkFileContains(checklistPath, 'evidence-log hygiene coverage', [
+  '## Evidence log hygiene (pre-share)',
+  'tmp/release-evidence-check-logs/',
+  'npm run release:evidence:cleanup',
+  'docs/release-dry-run-evidence.md',
+  'local-only evidence',
 ])
 
 checkFileContains(evidenceRunbookPath, 'runbook coverage', [
@@ -90,11 +104,26 @@ checkFileContains(evidenceRunbookPath, 'runbook coverage', [
   'release-provenance.txt',
 ])
 
+checkFileContains(gitignorePath, 'evidence log ignore coverage', [
+  'tmp/release-evidence-check-logs/',
+])
+
 checkFileContains(packageJsonPath, 'package script coverage', [
   '"release:evidence": "node scripts/release-evidence.mjs"',
   '"release:evidence:run": "node scripts/release-evidence-run.mjs"',
   '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
+  '"release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs"',
 ])
+
+checkFileContains(issueTemplatePath, 'release template evidence log coverage', [
+  '`npm run release:evidence:cleanup`',
+  '`tmp/release-evidence-check-logs/`',
+])
+
+if (!existsSync(evidenceCleanupScriptPath)) {
+  failed = true
+  console.error(`[first-release-check] missing required file: ${evidenceCleanupScriptPath}`)
+}
 
 if (failed) {
   process.exit(1)
