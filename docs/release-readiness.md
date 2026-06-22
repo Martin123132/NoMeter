@@ -104,6 +104,23 @@ The command fails if it cannot produce:
 - `tmp/release-smoke-artifacts/checksums.sha256`
 - `tmp/release-smoke-artifacts/release-notes.md`
 
+## First public release review checklist
+
+Before publishing a first public release, create a review issue from the GitHub template:
+
+`.github/ISSUE_TEMPLATE/nometer-release-review.md`
+
+That template requires verification with:
+
+- `release:prepare`
+- `release:notes`
+- `release:smoke`
+- `npm run lint`
+- `npm run build`
+- `npm run native:doctor`
+
+and confirms public-safe artifact/provenance/checksum handling.
+
 ## Provenance capture
 
 Collect these values with a small reproducible file:
