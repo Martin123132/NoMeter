@@ -75,10 +75,11 @@ The following outputs are demo-safe and sanitized:
 For a public-safe release preparation pass (without publishing a release), use:
 
 ```powershell
+npm run release:provenance
 npm run release:checksums
 ```
 
-This generates SHA-256 checksums for release candidates (installers/static bundle) and writes `checksums.sha256` to the artifact folder.
+This generates provenance metadata and SHA-256 checksums for release candidates (installers/static bundle), both written to the artifact folder.
 
 See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md).
 

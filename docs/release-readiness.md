@@ -27,6 +27,8 @@ These are expected in an output directory you control during release prep, typic
    - commit SHA (`git rev-parse HEAD`)
    - build timestamp
    - toolchain/runtime versions (`npm --version`, `node --version`, `cargo --version`, `rustc --version` where available)
+   - optional summary of local workspace state (`git status --short`)
+   - then generate a checked file: `npm run release:provenance -- --artifact-dir <path>`
 4. Generate checksums:
    - `npm run release:checksums -- --artifact-dir <path>`
    - review generated checksums file
@@ -34,32 +36,41 @@ These are expected in an output directory you control during release prep, typic
 
 ## Provenance capture
 
-Collect these values in a `release-provenance.txt` (or release notes section) before publishing:
+Collect these values with a small reproducible file:
 
 ```powershell
 git rev-parse HEAD
 git rev-parse --short HEAD
-git status --short
+git branch --show-current
 git tag --points-at HEAD
 Get-Date -Format o
 node -v
 npm -v
 cargo -V
 rustc -V
+npm run release:provenance -- --artifact-dir D:\path\to\artifacts
 ```
+
+The output file defaults to `<artifact-dir>/release-provenance.txt` and can be attached to release notes.
 
 Example provenance file format:
 
 ```text
-NoMeter Release
+NoMeter Release Provenance
+Project: nometer
 Version: 0.5.0
-Commit: <SHA>
-Built at: <ISO-8601 timestamp>
-Branch: <branch>
+GeneratedAt: 2026-06-22T00:00:00.000Z
 Node: v24.15.0
 NPM: 11.12.1
-Rustup/Cargo: cargo 1.96.0
-rustc: rustc 1.96.0
+Cargo: cargo 1.96.0
+Rustc: rustc 1.96.0
+GitCommit: d052b3d...
+GitCommitShort: d052b3d
+GitBranch: main
+GitTag: v0.5.0
+ArtifactsDir: ./outputs
+GitStatus:
+ M scripts/new-file
 ```
 
 ## Checksum generation
