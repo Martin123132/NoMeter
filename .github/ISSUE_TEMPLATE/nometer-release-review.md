@@ -14,6 +14,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] Release version:
 - [ ] Target commit SHA:
 - [ ] Artifact directory used (example: `D:\OpenForge\outputs\release`):
+- [ ] Evidence index file generated: `docs/release-dry-run-evidence.md` (or equivalent)
 
 ## Required verification commands (run locally)
 
@@ -23,6 +24,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] `npm run lint`
 - [ ] `npm run build`
 - [ ] `npm run native:doctor`
+- [ ] `npm run release:evidence-index -- --artifact-dir <artifact-dir> --output-file <artifact-index-path>`
 
 ## Required evidence files
 
@@ -31,6 +33,10 @@ Attach or link local-safe outputs from `<artifact-dir>`:
 - [ ] `release-provenance.txt` (from `release:provenance`)
 - [ ] `checksums.sha256` (from `release:checksums`)
 - [ ] `release-notes.md` (from `release:notes`)
+- [ ] `docs/release-dry-run-evidence.md` (or generated equivalent file), including:
+  - command evidence locations,
+  - CI run URLs,
+  - artifact presence and public-safe gate results.
 
 ## Sanity checks
 

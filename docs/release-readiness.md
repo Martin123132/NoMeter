@@ -104,6 +104,28 @@ The command fails if it cannot produce:
 - `tmp/release-smoke-artifacts/checksums.sha256`
 - `tmp/release-smoke-artifacts/release-notes.md`
 
+## Release dry-run evidence index
+
+Before final review, capture all required validation evidence in one file:
+
+```powershell
+npm run release:evidence-index -- --artifact-dir D:\path\to\artifacts --output-file docs/release-dry-run-evidence.md
+```
+
+This writes an evidence sheet with:
+
+- command outputs for:
+  - `npm run lint`
+  - `npm run build`
+  - `npm run native:doctor`
+  - `npm run release:smoke`
+  - `npm run release:review-check`
+  - `npm run ci:maintenance-check`
+  - `npm run release:first-release-check`
+- CI run URLs for `Web QA`, `Release metadata smoke`, `Release review guard`, `Native doctor`, `CI maintenance check`, `First release readiness check`
+- expected artifact presence (`NoMeter_<version>_x64-setup.exe`, `NoMeter_<version>_x64_en-US.msi`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`)
+- public-safe review gates and sign-off fields
+
 ## First public release review checklist
 
 Before publishing a first public release, create a review issue from the GitHub template:

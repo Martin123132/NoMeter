@@ -5,6 +5,8 @@ const repositoryRoot = process.cwd()
 const checklistPath = resolve(repositoryRoot, 'docs', 'first-release-checklist.md')
 const readinessPath = resolve(repositoryRoot, 'docs', 'release-readiness.md')
 const issueTemplatePath = resolve(repositoryRoot, '.github', 'ISSUE_TEMPLATE', 'nometer-release-review.md')
+const evidenceRunbookPath = resolve(repositoryRoot, 'docs', 'release-dry-run-evidence.md')
+const packageJsonPath = resolve(repositoryRoot, 'package.json')
 
 let failed = false
 
@@ -38,12 +40,14 @@ checkFileContains(issueTemplatePath, 'release template command coverage', [
   '`npm run lint`',
   '`npm run build`',
   '`npm run native:doctor`',
+  'release:evidence-index',
   'release-provenance.txt',
   'checksums.sha256',
   'release-notes.md',
   'NoMeter_*.exe',
   'NoMeter_*.msi',
   'nometer-static.zip',
+  'release-dry-run-evidence.md',
 ])
 
 checkFileContains(readinessPath, 'release-readiness discoverability', [
@@ -52,6 +56,36 @@ checkFileContains(readinessPath, 'release-readiness discoverability', [
   'release:review-check',
   'release-smoke',
   'ci:maintenance-check',
+  'release:evidence-index',
+  'release-dry-run-evidence.md',
+  'Release dry-run evidence index',
+])
+
+checkFileContains(checklistPath, 'first release evidence checklist coverage', [
+  '## Release dry-run evidence capture',
+  'npm run release:evidence-index',
+  'docs/release-dry-run-evidence.md',
+  'release:notes -- --artifact-dir <artifact-dir>',
+  'release:first-release-check',
+])
+
+checkFileContains(evidenceRunbookPath, 'runbook coverage', [
+  'Release Dry-Run Evidence Index',
+  'npm run lint',
+  'npm run build',
+  'npm run native:doctor',
+  'npm run release:smoke',
+  'npm run release:first-release-check',
+  'NoMeter_',
+  '_x64-setup.exe',
+  '_x64_en-US.msi',
+  'checksums.sha256',
+  'release-notes.md',
+  'release-provenance.txt',
+])
+
+checkFileContains(packageJsonPath, 'package script coverage', [
+  '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
 ])
 
 if (failed) {

@@ -23,6 +23,16 @@ Before creating a release, confirm all expected public outputs are present in th
 - `npm run lint`
 - `npm run build`
 - `npm run native:doctor`
+- `npm run release:first-release-check`
+
+## Release dry-run evidence capture
+
+- Generate the evidence index before opening a release-review issue:
+  - `npm run release:evidence-index -- --artifact-dir <artifact-dir> --output-file docs/release-dry-run-evidence.md`
+- Use [`docs/release-dry-run-evidence.md`](docs/release-dry-run-evidence.md) as the capture sheet for:
+  - command output locations for lint/build/doctor/smoke/review checks,
+  - CI run URLs for `web-qa`, `release-smoke`, `release-review-guard`, `native-doctor`, `ci-maintenance-check`, `first-release-check`,
+  - and artifact presence verification (`NoMeter_<version>_x64-setup.exe`, `NoMeter_<version>_x64_en-US.msi`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`).
 
 ## Public-safe review gates (must pass)
 

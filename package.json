@@ -22,6 +22,7 @@
     "release:notes": "node scripts/release-notes.mjs",
     "release:smoke": "node scripts/release-smoke.mjs",
     "release:review-check": "node scripts/release-review-check.mjs",
+    "release:evidence-index": "node scripts/release-evidence-index.mjs",
     "ci:maintenance-check": "node scripts/ci-maintenance-check.mjs",
     "release:first-release-check": "node scripts/first-release-check.mjs",
     "tauri": "node scripts/with-d-toolchain.mjs -- tauri",
