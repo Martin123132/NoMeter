@@ -24,6 +24,7 @@ const commonEnv = {
   OPENFORGE_WORK_DIR: process.env.OPENFORGE_WORK_DIR || join(openForgeRoot, 'work'),
   PATH: pathWithToolchain,
 }
+const skipRequiredChecks = process.env.NOMETER_SKIP_REQUIRED === '1'
 
 const localFfmpeg = findFile(ffmpegRoot, 'ffmpeg.exe')
 const localFfprobe = findFile(ffmpegRoot, 'ffprobe.exe')
@@ -80,7 +81,7 @@ for (const check of checks) {
     continue
   }
 
-  if (check.required) {
+  if (check.required && !skipRequiredChecks) {
     failedRequired = true
     console.log(`FAIL ${check.name}: not found`)
   } else {

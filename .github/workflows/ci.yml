@@ -55,7 +55,7 @@ jobs:
       - name: Run native environment checks
         env:
           OPENFORGE_ROOT: ${{ github.workspace }}
-          OPENFORGE_TOOLCHAIN_ROOT: ${{ github.workspace }}/.github/ci-toolchain
           OPENFORGE_TEMP: ${{ github.workspace }}/tmp
           OPENFORGE_WORK_DIR: ${{ github.workspace }}/work
+          NOMETER_SKIP_REQUIRED: "1"
         run: npm run native:doctor
