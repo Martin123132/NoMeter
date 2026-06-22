@@ -52,6 +52,27 @@ jobs:
       - name: Run release metadata smoke
         run: npm run release:smoke
 
+  release-review-guard:
+    name: Release review guard
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify release review docs/template alignment
+        run: npm run release:review-check
+
   native-doctor:
     name: Native doctor
     runs-on: ubuntu-latest

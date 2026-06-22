@@ -121,6 +121,19 @@ That template requires verification with:
 
 and confirms public-safe artifact/provenance/checksum handling.
 
+Validate that the template and review references remain aligned with the release readiness contract:
+
+```powershell
+npm run release:review-check
+```
+
+This deterministic guard ensures the review path keeps requiring:
+
+- `release:prepare`, `release:notes`, `release:smoke`
+- `native:doctor`
+- checksum/provenance output capture
+- public-safe artifact rules
+
 ## Provenance capture
 
 Collect these values with a small reproducible file:
