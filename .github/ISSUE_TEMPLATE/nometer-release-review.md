@@ -24,7 +24,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] `npm run lint`
 - [ ] `npm run build`
 - [ ] `npm run native:doctor`
-- [ ] `npm run release:evidence-index -- --artifact-dir <artifact-dir> --output-file <artifact-index-path>`
+- [ ] `npm run release:evidence`
 
 ## Required evidence files
 
@@ -37,6 +37,16 @@ Attach or link local-safe outputs from `<artifact-dir>`:
   - command evidence locations,
   - CI run URLs,
   - artifact presence and public-safe gate results.
+
+Preferred evidence log capture paths (for `release:evidence` defaults):
+
+- `tmp/release-evidence-check-logs/lint.log`
+- `tmp/release-evidence-check-logs/build.log`
+- `tmp/release-evidence-check-logs/native-doctor.log`
+- `tmp/release-evidence-check-logs/release-smoke.log`
+- `tmp/release-evidence-check-logs/release-review-check.log`
+- `tmp/release-evidence-check-logs/ci-maintenance-check.log`
+- `tmp/release-evidence-check-logs/first-release-check.log`
 
 ## Sanity checks
 

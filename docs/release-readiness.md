@@ -109,8 +109,23 @@ The command fails if it cannot produce:
 Before final review, capture all required validation evidence in one file:
 
 ```powershell
-npm run release:evidence-index -- --artifact-dir D:\path\to\artifacts --output-file docs/release-dry-run-evidence.md
+npm run release:evidence
 ```
+
+Defaults used by `release:evidence`:
+
+- Artifact directory: `outputs/release`
+- Output file: `docs/release-dry-run-evidence.md`
+- Evidence log paths:
+  - `tmp/release-evidence-check-logs/lint.log`
+  - `tmp/release-evidence-check-logs/build.log`
+  - `tmp/release-evidence-check-logs/native-doctor.log`
+  - `tmp/release-evidence-check-logs/release-smoke.log`
+  - `tmp/release-evidence-check-logs/release-review-check.log`
+  - `tmp/release-evidence-check-logs/ci-maintenance-check.log`
+  - `tmp/release-evidence-check-logs/first-release-check.log`
+
+All paths are overrideable via the underlying `release-evidence-index` options (for example `--artifact-dir`, `--output-file`, and `--lint-evidence`).
 
 This writes an evidence sheet with:
 

@@ -40,7 +40,9 @@ checkFileContains(issueTemplatePath, 'release template command coverage', [
   '`npm run lint`',
   '`npm run build`',
   '`npm run native:doctor`',
-  'release:evidence-index',
+  '`npm run release:evidence`',
+  'tmp/release-evidence-check-logs/lint.log',
+  'tmp/release-evidence-check-logs/build.log',
   'release-provenance.txt',
   'checksums.sha256',
   'release-notes.md',
@@ -56,14 +58,15 @@ checkFileContains(readinessPath, 'release-readiness discoverability', [
   'release:review-check',
   'release-smoke',
   'ci:maintenance-check',
-  'release:evidence-index',
+  'release:evidence',
+  'tmp/release-evidence-check-logs',
   'release-dry-run-evidence.md',
   'Release dry-run evidence index',
 ])
 
 checkFileContains(checklistPath, 'first release evidence checklist coverage', [
   '## Release dry-run evidence capture',
-  'npm run release:evidence-index',
+  'npm run release:evidence',
   'docs/release-dry-run-evidence.md',
   'release:notes -- --artifact-dir <artifact-dir>',
   'release:first-release-check',
@@ -85,6 +88,7 @@ checkFileContains(evidenceRunbookPath, 'runbook coverage', [
 ])
 
 checkFileContains(packageJsonPath, 'package script coverage', [
+  '"release:evidence": "node scripts/release-evidence.mjs"',
   '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
 ])
 
