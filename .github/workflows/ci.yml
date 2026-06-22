@@ -101,3 +101,20 @@ jobs:
           OPENFORGE_WORK_DIR: ${{ github.workspace }}/work
           NOMETER_SKIP_REQUIRED: "1"
         run: npm run native:doctor
+
+  ci-maintenance-check:
+    name: CI maintenance check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Validate CI maintenance expectations
+        run: npm run ci:maintenance-check

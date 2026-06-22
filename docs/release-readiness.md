@@ -220,3 +220,30 @@ Get-FileHash NoMeter_0.5.0_x64-setup.exe -Algorithm SHA256
 - [ ] Checksums file generated and validated against downloaded artifacts.
 - [ ] Release notes include: version, changes since prior release, checksum file hash, and build date.
 - [ ] No secrets, machine-local paths, or private paths are embedded in published materials.
+
+## CI maintenance guard
+
+Keep CI runtime posture auditable for release-critical checks:
+
+- Required workflow jobs: `web-qa`, `release-smoke`, `release-review-guard`, `native-doctor`.
+- Required job display names:
+  - `Web QA`
+  - `Release metadata smoke`
+  - `Release review guard`
+  - `Native doctor`
+- Required action pins in `/.github/workflows/ci.yml`:
+  - `actions/checkout@v7`
+  - `actions/setup-node@v6`
+  - `node-version: "22"`
+
+Run the lightweight drift check locally before merging workflow edits:
+
+```powershell
+npm run ci:maintenance-check
+```
+
+This guard fails if:
+
+- a required job is missing or renamed,
+- the critical jobs change action pins/runtime inputs,
+- or legacy `@v4` `actions/checkout` / `actions/setup-node` pins are reintroduced.
