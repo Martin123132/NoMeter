@@ -56,6 +56,35 @@ To run in constrained environments (e.g., if you are only validating metadata), 
 npm run release:prepare -- --artifact-dir D:\path\to\artifacts --skip-build --skip-doctor --non-strict
 ```
 
+## One-command release draft generation
+
+After a successful `release:prepare`, generate a sanitized draft release body:
+
+```powershell
+npm run release:notes -- --artifact-dir D:\path\to\artifacts
+```
+
+Optional helpers:
+
+- Print to console for quick inspection:
+
+```powershell
+npm run release:notes -- --artifact-dir D:\path\to\artifacts --stdout
+```
+
+- Use a custom output file:
+
+```powershell
+npm run release:notes -- --artifact-dir D:\path\to\artifacts --output-file D:\path\to\artifacts\release-draft.md
+```
+
+`release:notes` reads the local provenance/checksum files and emits a draft with:
+
+- version and commit metadata
+- generated artifact list and SHA-256 table
+- verification commands
+- a release-readiness checklist
+
 ## Provenance capture
 
 Collect these values with a small reproducible file:

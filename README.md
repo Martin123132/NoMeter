@@ -80,6 +80,13 @@ npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 
 This runs lint + web build + native doctor, then writes provenance and checksums for release candidates (installers/static bundle) to the artifact folder.
 
+Generate a paste-ready release draft (without publishing):
+
+```powershell
+npm run release:prepare -- --artifact-dir D:\path\to\artifacts
+npm run release:notes -- --artifact-dir D:\path\to\artifacts --stdout
+```
+
 Optional flags are available for local-only runs (for example `--skip-build`, `--skip-doctor`, `--non-strict`).
 
 See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md).
