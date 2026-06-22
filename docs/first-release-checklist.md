@@ -29,6 +29,8 @@ Before creating a release, confirm all expected public outputs are present in th
 
 - Generate the evidence index before opening a release-review issue:
   - `npm run release:evidence`
+- For a full local capture that runs all checks and writes logs:
+  - `npm run release:evidence:run`
 - Use [`docs/release-dry-run-evidence.md`](docs/release-dry-run-evidence.md) as the capture sheet for:
   - command output locations for lint/build/doctor/smoke/review checks,
   - CI run URLs for `web-qa`, `release-smoke`, `release-review-guard`, `native-doctor`, `ci-maintenance-check`, `first-release-check`,

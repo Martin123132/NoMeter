@@ -112,6 +112,24 @@ Before final review, capture all required validation evidence in one file:
 npm run release:evidence
 ```
 
+To capture a full local evidence run with logs automatically:
+
+```powershell
+npm run release:evidence:run
+```
+
+This command runs:
+
+- `npm run lint`
+- `npm run build`
+- `npm run native:doctor`
+- `npm run release:smoke`
+- `npm run release:review-check`
+- `npm run ci:maintenance-check`
+- `npm run release:first-release-check`
+
+then writes the same evidence scaffold.
+
 Defaults used by `release:evidence`:
 
 - Artifact directory: `outputs/release`

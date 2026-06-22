@@ -25,6 +25,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] `npm run build`
 - [ ] `npm run native:doctor`
 - [ ] `npm run release:evidence`
+- [ ] `npm run release:evidence:run` (optional: full local run + log capture)
 
 ## Required evidence files
 
