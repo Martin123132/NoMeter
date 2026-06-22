@@ -118,3 +118,20 @@ jobs:
 
       - name: Validate CI maintenance expectations
         run: npm run ci:maintenance-check
+
+  first-release-check:
+    name: First release readiness check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Validate first-release checklist/docs/template alignment
+        run: npm run release:first-release-check

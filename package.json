@@ -23,6 +23,7 @@
     "release:smoke": "node scripts/release-smoke.mjs",
     "release:review-check": "node scripts/release-review-check.mjs",
     "ci:maintenance-check": "node scripts/ci-maintenance-check.mjs",
+    "release:first-release-check": "node scripts/first-release-check.mjs",
     "tauri": "node scripts/with-d-toolchain.mjs -- tauri",
     "desktop:dev": "node scripts/with-d-toolchain.mjs -- tauri dev",
     "desktop:build": "node scripts/with-d-toolchain.mjs -- tauri build && node scripts/relocate-tauri-cache.mjs"

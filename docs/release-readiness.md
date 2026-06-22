@@ -247,3 +247,19 @@ This guard fails if:
 - a required job is missing or renamed,
 - the critical jobs change action pins/runtime inputs,
 - or legacy `@v4` `actions/checkout` / `actions/setup-node` pins are reintroduced.
+
+## First release checklist
+
+- [First release checklist](first-release-checklist.md) contains:
+  - expected public artifacts (`NoMeter_*.exe`, `NoMeter_*.msi`, `nometer-static.zip`),
+  - required metadata outputs (`release-provenance.txt`, `checksums.sha256`, `release-notes.md`),
+  - required pre-publish commands (`release:prepare`, `release:notes`, `release:smoke`, `release:review-check`, `ci:maintenance-check`, `lint`, `build`, `native:doctor`),
+  - and public-safe evidence gates.
+
+Run it directly:
+
+```powershell
+npm run release:first-release-check
+```
+
+This script keeps the checklist, issue template, and readiness docs aligned before the first release boundary.
