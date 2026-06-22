@@ -87,6 +87,12 @@ npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 npm run release:notes -- --artifact-dir D:\path\to\artifacts --stdout
 ```
 
+For CI-safe verification in developer workflows:
+
+```powershell
+npm run release:smoke
+```
+
 Optional flags are available for local-only runs (for example `--skip-build`, `--skip-doctor`, `--non-strict`).
 
 See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md).

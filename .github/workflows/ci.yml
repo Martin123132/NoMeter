@@ -31,6 +31,27 @@ jobs:
       - name: Build web app
         run: npm run build
 
+  release-smoke:
+    name: Release metadata smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run release metadata smoke
+        run: npm run release:smoke
+
   native-doctor:
     name: Native doctor
     runs-on: ubuntu-latest

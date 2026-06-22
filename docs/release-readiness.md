@@ -85,6 +85,25 @@ npm run release:notes -- --artifact-dir D:\path\to\artifacts --output-file D:\pa
 - verification commands
 - a release-readiness checklist
 
+## CI-safe deterministic metadata smoke test
+
+Use this local CI-style smoke check to verify the full metadata pipeline stays functional without building installers:
+
+```powershell
+npm run release:smoke
+```
+
+It writes a tiny local fixture set in `tmp/release-smoke-artifacts`, runs:
+
+- `release:prepare` with fast paths (`--skip-lint --skip-build --skip-doctor`)
+- `release:notes` against that fixture
+
+The command fails if it cannot produce:
+
+- `tmp/release-smoke-artifacts/release-provenance.txt`
+- `tmp/release-smoke-artifacts/checksums.sha256`
+- `tmp/release-smoke-artifacts/release-notes.md`
+
 ## Provenance capture
 
 Collect these values with a small reproducible file:
