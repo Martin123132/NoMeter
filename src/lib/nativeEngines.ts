@@ -115,7 +115,7 @@ export function getNativeCommandPreview(engine: NativeEngine) {
 
 export async function transcodeMediaFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
-    throw new Error('Native media conversion requires the OpenForge desktop app.')
+    throw new Error('Native media conversion requires the NoMeter desktop app.')
   }
 
   const { invoke } = await import('@tauri-apps/api/core')
@@ -148,7 +148,7 @@ export async function convertDocumentFile(
   folders?: NativeFolders,
 ): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
-    throw new Error('Native document conversion requires the OpenForge desktop app.')
+    throw new Error('Native document conversion requires the NoMeter desktop app.')
   }
 
   const { invoke } = await import('@tauri-apps/api/core')
@@ -177,7 +177,7 @@ export async function convertDocumentFile(
 
 export async function optimizePdfFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
-    throw new Error('Native PDF optimization requires the OpenForge desktop app.')
+    throw new Error('Native PDF optimization requires the NoMeter desktop app.')
   }
 
   const { invoke } = await import('@tauri-apps/api/core')

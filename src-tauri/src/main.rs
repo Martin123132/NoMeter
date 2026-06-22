@@ -360,7 +360,7 @@ fn configured_folder(value: Option<&str>, label: &str) -> Result<Option<PathBuf>
 
     if is_system_drive_path(&path) {
         return Err(format!(
-            "Choose a non-system {label} folder. This OpenForge workspace stays off C:."
+            "Choose a non-system {label} folder. This NoMeter workspace stays off C:."
         ));
     }
 
@@ -402,7 +402,7 @@ fn unique_output_path(output_dir: &Path, output_name: &str) -> PathBuf {
         .file_stem()
         .and_then(|value| value.to_str())
         .filter(|value| !value.is_empty())
-        .unwrap_or("openforge-output");
+        .unwrap_or("nometer-output");
     let extension = path.extension().and_then(|value| value.to_str());
 
     for index in 0..1_000 {
@@ -420,7 +420,7 @@ fn unique_output_path(output_dir: &Path, output_name: &str) -> PathBuf {
         }
     }
 
-    output_dir.join(format!("{stem}-{}", unique_job_id().unwrap_or_else(|_| "openforge-output".into())))
+    output_dir.join(format!("{stem}-{}", unique_job_id().unwrap_or_else(|_| "nometer-output".into())))
 }
 
 fn unique_job_id() -> Result<String, String> {
@@ -440,7 +440,7 @@ fn safe_stem(file_name: &str) -> String {
     let sanitized = sanitize_component(stem);
 
     if sanitized.is_empty() {
-        "openforge-media".into()
+        "nometer-media".into()
     } else {
         sanitized
     }
@@ -492,7 +492,7 @@ fn sanitize_file_name(value: &str) -> String {
         .to_string();
 
     if sanitized.is_empty() {
-        "openforge-output".into()
+        "nometer-output".into()
     } else {
         sanitized
     }
@@ -525,5 +525,5 @@ fn main() {
             optimize_pdf
         ])
         .run(tauri::generate_context!())
-        .expect("error while running OpenForge");
+        .expect("error while running NoMeter");
 }

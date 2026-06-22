@@ -10,7 +10,7 @@ const userLocalAppData = join(process.env.USERPROFILE || homedir(), 'AppData', '
 const candidates = [...new Set([join(localAppData, 'tauri'), join(localAppData, 'Tauri'), join(userLocalAppData, 'tauri'), join(userLocalAppData, 'Tauri')])]
 
 if (!destinationRoot.toLowerCase().startsWith(openForgeRoot.toLowerCase())) {
-  console.error(`Refusing to move Tauri cache outside OpenForge root: ${destinationRoot}`)
+  console.error(`Refusing to move Tauri cache outside the NoMeter workspace root: ${destinationRoot}`)
   process.exit(1)
 }
 

@@ -147,7 +147,7 @@ const defaultNativeFolders: NativeFolders = {
   outputDir: 'D:\\Codex\\OpenForge\\outputs\\converted',
 }
 
-const nativeFolderStorageKey = 'openforge.nativeFolders.v1'
+const nativeFolderStorageKey = 'nometer.nativeFolders.v1'
 
 const statusLabels: Record<JobStatus, string> = {
   ready: 'Ready',
@@ -374,7 +374,7 @@ function App() {
         const blob = await convertImageFile(job.file, imageFormat, quality)
         const name = preserveNames
           ? imageOutputName(job.name, imageFormat)
-          : imageOutputName(`openforge-image-${completed + 1}`, imageFormat)
+          : imageOutputName(`nometer-image-${completed + 1}`, imageFormat)
         const artifact = createArtifact(blob, name, 'Image batch', 1)
         setExports((current) => [artifact, ...current])
         updateJob(job.id, {
@@ -413,14 +413,14 @@ function App() {
 
     try {
       const blob = await mergePdfFiles(compatibleJobs.map((job) => job.file))
-      const artifact = createArtifact(blob, 'openforge-merged.pdf', 'PDF merge', compatibleJobs.length)
+      const artifact = createArtifact(blob, 'nometer-merged.pdf', 'PDF merge', compatibleJobs.length)
       setExports((current) => [artifact, ...current])
       compatibleJobs.forEach((job) =>
         updateJob(job.id, {
           status: 'done',
           progress: 100,
-          message: 'Merged into openforge-merged.pdf',
-          outputName: 'openforge-merged.pdf',
+          message: 'Merged into nometer-merged.pdf',
+          outputName: 'nometer-merged.pdf',
         }),
       )
       setBanner({
@@ -453,7 +453,7 @@ function App() {
       const name =
         preserveNames && compatibleJobs.length === 1
           ? `${fileStem(compatibleJobs[0].name)}-pages.zip`
-          : 'openforge-split-pages.zip'
+          : 'nometer-split-pages.zip'
       const artifact = createArtifact(blob, name, 'PDF split', compatibleJobs.length)
       setExports((current) => [artifact, ...current])
       compatibleJobs.forEach((job) =>
@@ -603,14 +603,14 @@ function App() {
 
   return (
     <div className="app-shell">
-      <aside className="sidebar" aria-label="OpenForge sections">
+      <aside className="sidebar" aria-label="NoMeter sections">
         <div className="brand">
           <div className="brand-mark" aria-hidden="true">
             <Archive size={22} />
           </div>
           <div>
-            <strong>OpenForge</strong>
-            <span>local file works</span>
+            <strong>NoMeter</strong>
+            <span>No credits. No uploads.</span>
           </div>
         </div>
 
@@ -635,7 +635,7 @@ function App() {
           <ShieldCheck size={18} />
           <div>
             <span>Local-first</span>
-            <strong>No account, no credits</strong>
+            <strong>No limits. No uploads.</strong>
           </div>
         </div>
       </aside>
@@ -649,7 +649,7 @@ function App() {
           <div className="topbar-actions">
             <span className="local-pill">
               <LockKeyhole size={15} />
-              Files stay in this browser
+              Files stay local
             </span>
             <button type="button" className="ghost-button" onClick={clearQueue} disabled={jobs.length === 0}>
               <Trash2 size={16} />
@@ -672,7 +672,7 @@ function App() {
                 <UploadCloud size={28} />
               </div>
               <div>
-                <h2>Drop files into the forge</h2>
+                <h2>Drop files into NoMeter</h2>
                 <p>
                   Images and PDFs run in the browser; qpdf, Pandoc, and FFmpeg power desktop-only jobs.
                 </p>
@@ -1022,10 +1022,10 @@ async function createSampleFiles(options: { includeDocument?: boolean; includeMe
     '<rect x="72" y="72" width="816" height="396" rx="22" fill="#17211c"/>',
     '<path d="M146 157h668v72H146zM204 274h552v111H204z" fill="#ffffff"/>',
     '<path d="M204 274h552v42H204z" fill="#1b8f61"/>',
-    '<text x="146" y="118" fill="#17211c" font-family="Arial, sans-serif" font-size="34" font-weight="700">OpenForge sample image</text>',
+    '<text x="146" y="118" fill="#17211c" font-family="Arial, sans-serif" font-size="34" font-weight="700">NoMeter sample image</text>',
     '</svg>',
   ].join('')
-  const image = new File([new Blob([svg], { type: 'image/svg+xml' })], 'openforge-sample.svg', {
+  const image = new File([new Blob([svg], { type: 'image/svg+xml' })], 'nometer-sample.svg', {
     type: 'image/svg+xml',
   })
 
@@ -1034,7 +1034,7 @@ async function createSampleFiles(options: { includeDocument?: boolean; includeMe
   const page = pdf.addPage([595, 842])
   const headingFont = await pdf.embedFont(StandardFonts.HelveticaBold)
   const bodyFont = await pdf.embedFont(StandardFonts.Helvetica)
-  page.drawText('OpenForge sample PDF', {
+  page.drawText('NoMeter sample PDF', {
     x: 72,
     y: 742,
     size: 28,
@@ -1049,7 +1049,7 @@ async function createSampleFiles(options: { includeDocument?: boolean; includeMe
     color: rgb(0.32, 0.4, 0.36),
   })
   page.drawRectangle({ x: 72, y: 590, width: 451, height: 76, color: rgb(0.93, 0.98, 0.95) })
-  page.drawText('No upload. No watermark. No subscription.', {
+  page.drawText('No credits. No limits. No uploads.', {
     x: 92,
     y: 620,
     size: 16,
@@ -1057,7 +1057,7 @@ async function createSampleFiles(options: { includeDocument?: boolean; includeMe
     color: rgb(0.11, 0.56, 0.38),
   })
   const bytes = await pdf.save({ useObjectStreams: true })
-  const pdfFile = new File([bytes.slice().buffer as ArrayBuffer], 'openforge-sample.pdf', {
+  const pdfFile = new File([bytes.slice().buffer as ArrayBuffer], 'nometer-sample.pdf', {
     type: 'application/pdf',
   })
 
@@ -1076,15 +1076,15 @@ async function createSampleFiles(options: { includeDocument?: boolean; includeMe
 
 function createSampleMarkdownFile() {
   const markdown = [
-    '# OpenForge sample document',
+    '# NoMeter sample document',
     '',
     'This document is generated locally for Pandoc conversion testing.',
     '',
     '## Promise',
     '',
-    '- No upload',
-    '- No watermark',
-    '- No subscription',
+    '- No credits',
+    '- No limits',
+    '- No uploads',
     '',
     '| Engine | Status |',
     '|---|---|',
@@ -1093,7 +1093,7 @@ function createSampleMarkdownFile() {
     '',
   ].join('\n')
 
-  return new File([markdown], 'openforge-sample.md', { type: 'text/markdown' })
+  return new File([markdown], 'nometer-sample.md', { type: 'text/markdown' })
 }
 
 function createSampleAudioFile() {
@@ -1122,7 +1122,7 @@ function createSampleAudioFile() {
     view.setInt16(44 + index * 2, sample * 0x3fff, true)
   }
 
-  return new File([buffer], 'openforge-tone.wav', { type: 'audio/wav' })
+  return new File([buffer], 'nometer-tone.wav', { type: 'audio/wav' })
 }
 
 function writeAscii(view: DataView, offset: number, value: string) {
@@ -1207,7 +1207,7 @@ function validateNativeFolders(folders: NativeFolders) {
   if (!isAbsoluteFolderPath(workDir)) return 'Use an absolute work folder path.'
   if (!isAbsoluteFolderPath(outputDir)) return 'Use an absolute save folder path.'
   if (isCDrivePath(workDir) || isCDrivePath(outputDir)) {
-    return 'Choose non-system folders; this OpenForge workspace stays off C:.'
+    return 'Choose non-system folders; this NoMeter workspace stays off C:.'
   }
 
   return null

@@ -46,7 +46,7 @@ const checks = [
 const drive = parse(projectRoot).root.toUpperCase()
 let failedRequired = false
 
-console.log('OpenForge native doctor')
+console.log('NoMeter native doctor')
 console.log(`Project: ${projectRoot}`)
 console.log(`Drive: ${drive}`)
 console.log(`Cargo home: ${cargoHome}`)

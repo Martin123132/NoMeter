@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "OpenForge",
-  "version": "0.4.0",
-  "identifier": "dev.openforge.desktop",
+  "productName": "NoMeter",
+  "version": "0.5.0",
+  "identifier": "dev.nometer.desktop",
   "build": {
     "beforeDevCommand": "npm.cmd run dev -- --host 127.0.0.1",
     "beforeBuildCommand": "npm.cmd run build",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "OpenForge",
+        "title": "NoMeter",
         "width": 1280,
         "height": 820,
         "minWidth": 980,
@@ -33,7 +33,7 @@
     "externalBin": ["binaries/ffmpeg", "binaries/ffprobe", "binaries/pandoc", "binaries/qpdf"],
     "resources": ["binaries/*.dll"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
-    "shortDescription": "Local-first file conversion and PDF tools",
-    "longDescription": "OpenForge converts, merges, splits, and prepares files locally without accounts, credits, or uploads."
+    "shortDescription": "No credits, no limits, no uploads",
+    "longDescription": "NoMeter converts, merges, splits, and prepares files locally without accounts, credits, limits, or uploads."
   }
 }

@@ -1,6 +1,6 @@
 # Contributing
 
-OpenForge is built for practical local-first utility: no upload, no account, no credits, no watermark.
+NoMeter is built for practical local-first utility: no uploads, no accounts, no credits, no limits.
 
 ## Ground Rules
 

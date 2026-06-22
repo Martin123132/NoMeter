@@ -1,6 +1,6 @@
 # Security Policy
 
-OpenForge handles private local files. Treat privacy and filesystem safety as core product behavior, not polish.
+NoMeter handles private local files. Treat privacy and filesystem safety as core product behavior, not polish.
 
 ## Reporting
 

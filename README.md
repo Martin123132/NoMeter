@@ -1,8 +1,8 @@
-# OpenForge
+# NoMeter
 
-OpenForge is a local-first, open-source file conversion and PDF toolbox.
+NoMeter is a local-first, open-source file conversion and PDF toolbox.
 
-The aim is simple: give people the everyday converter tools they pay subscriptions for, without accounts, credits, watermarks, or uploading private files to someone else's server.
+The aim is simple: give people the everyday converter tools they pay subscriptions for, without credits, limits, watermarks, or uploading private files to someone else's server.
 
 ## What Works Today
 
@@ -20,7 +20,7 @@ The aim is simple: give people the everyday converter tools they pay subscriptio
 
 ## Native Engine Pack
 
-The desktop runtime is present under `src-tauri/`. On this workspace, Rust/Cargo live under `D:\Codex\Toolchains\rust`, native tools live under `D:\Codex\OpenForge\tools`, and OpenForge work files default to `D:\Codex\OpenForge\work`.
+The desktop runtime is present under `src-tauri/`. On this workspace, Rust/Cargo live under `D:\Codex\Toolchains\rust`, native tools live under `D:\Codex\OpenForge\tools`, and NoMeter work files default to `D:\Codex\OpenForge\work`.
 
 Current engines:
 
@@ -33,7 +33,7 @@ Planned engines:
 - OCRmyPDF and Tesseract for OCR.
 - Ghostscript for PDF rasterization and deeper compression.
 
-OpenForge keeps this workspace's project, outputs, toolchains, build caches, and working directories away from the system drive where the tooling allows it. Tauri's Windows bundler cache is moved back to `D:\Codex\OpenForge\tools\local-appdata\tauri` after packaging.
+NoMeter keeps this workspace's project, outputs, toolchains, build caches, and working directories away from the system drive where the tooling allows it. Tauri's Windows bundler cache is moved back to `D:\Codex\OpenForge\tools\local-appdata\tauri` after packaging.
 
 Native desktop jobs default to:
 
@@ -86,9 +86,9 @@ npm.cmd run desktop:build
 
 Current release artifacts are copied to `D:\Codex\OpenForge\outputs`:
 
-- `OpenForge_0.4.0_x64-setup.exe`
-- `OpenForge_0.4.0_x64_en-US.msi`
-- `openforge-static.zip`
+- `NoMeter_0.5.0_x64-setup.exe`
+- `NoMeter_0.5.0_x64_en-US.msi`
+- `nometer-static.zip`
 
 ## Desktop Prerequisites
 
@@ -99,6 +99,6 @@ Current release artifacts are copied to `D:\Codex\OpenForge\outputs`:
 
 ## License
 
-OpenForge is licensed under AGPL-3.0-only. See `LICENSE`.
+NoMeter is licensed under AGPL-3.0-only. See `LICENSE`.
 
 This is intentional: improvements made for network-hosted or productized versions should flow back to users.

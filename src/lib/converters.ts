@@ -25,7 +25,7 @@ export function formatBytes(bytes: number) {
 export function fileStem(fileName: string) {
   const trimmed = fileName.trim()
   const withoutExtension = trimmed.replace(/\.[^/.]+$/, '')
-  return withoutExtension || 'openforge-export'
+  return withoutExtension || 'nometer-export'
 }
 
 export function imageOutputName(fileName: string, format: ImageFormat) {
