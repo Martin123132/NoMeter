@@ -6,15 +6,15 @@ import { fileURLToPath } from 'node:url'
 const scriptDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolve(scriptDir, '..')
 const defaultToolchainRoot = 'D:\\Codex\\Toolchains'
-const defaultOpenForgeRoot = 'D:\\Codex\\OpenForge'
+const defaultNoMeterRoot = 'D:\\Codex\\OpenForge'
 
-const toolchainRoot = process.env.OPENFORGE_TOOLCHAIN_ROOT || defaultToolchainRoot
-const openForgeRoot = process.env.OPENFORGE_ROOT || defaultOpenForgeRoot
+const toolchainRoot = envValue('NOMETER_TOOLCHAIN_ROOT', 'OPENFORGE_TOOLCHAIN_ROOT') || defaultToolchainRoot
+const noMeterRoot = envValue('NOMETER_ROOT', 'OPENFORGE_ROOT') || defaultNoMeterRoot
 const cargoHome = process.env.CARGO_HOME || join(toolchainRoot, 'rust', 'cargo')
 const rustupHome = process.env.RUSTUP_HOME || join(toolchainRoot, 'rust', 'rustup')
-const tempDir = process.env.OPENFORGE_TEMP || 'D:\\Codex\\Temp'
-const workDir = process.env.OPENFORGE_WORK_DIR || join(openForgeRoot, 'work')
-const localAppData = process.env.OPENFORGE_LOCALAPPDATA || join(openForgeRoot, 'tools', 'local-appdata')
+const tempDir = envValue('NOMETER_TEMP', 'OPENFORGE_TEMP') || 'D:\\Codex\\Temp'
+const workDir = envValue('NOMETER_WORK_DIR', 'OPENFORGE_WORK_DIR') || join(noMeterRoot, 'work')
+const localAppData = envValue('NOMETER_LOCALAPPDATA', 'OPENFORGE_LOCALAPPDATA') || join(noMeterRoot, 'tools', 'local-appdata')
 
 for (const dir of [cargoHome, rustupHome, tempDir, workDir, localAppData]) {
   mkdirSync(dir, { recursive: true })
@@ -36,6 +36,7 @@ const env = {
   TEMP: tempDir,
   TMP: tempDir,
   LOCALAPPDATA: localAppData,
+  NOMETER_WORK_DIR: workDir,
   OPENFORGE_WORK_DIR: workDir,
   PATH: existsSync(cargoBin) ? `${cargoBin}${delimiter}${process.env.PATH || ''}` : process.env.PATH || '',
 }
@@ -81,4 +82,8 @@ function resolveCommand(command, args, pathValue) {
   }
 
   return { executable: command, executableArgs: args }
+}
+
+function envValue(primaryName, legacyName) {
+  return process.env[primaryName] || process.env[legacyName] || ''
 }

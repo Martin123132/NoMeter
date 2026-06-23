@@ -13,7 +13,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 
 - [ ] Release version:
 - [ ] Target commit SHA:
-- [ ] Artifact directory used (example: `D:\OpenForge\outputs\release`):
+- [ ] Artifact directory used (example: `<artifact-dir>`):
 - [ ] Evidence index file generated: `docs/release-dry-run-evidence.md` (or equivalent)
 
 ## Required verification commands (run locally)
@@ -27,6 +27,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] `npm run release:evidence`
 - [ ] `npm run release:evidence:run` (optional: full local run + log capture)
 - [ ] `npm run release:evidence:cleanup` (clean raw logs before sharing)
+- [ ] `npm run release:public-safety-check`
 
 ## Required evidence files
 
@@ -40,15 +41,16 @@ Attach or link local-safe outputs from `<artifact-dir>`:
   - CI run URLs,
   - artifact presence and public-safe gate results.
 
-Preferred evidence log capture paths (for `release:evidence` defaults):
+Preferred evidence log labels (for `release:evidence` defaults):
 
-- `tmp/release-evidence-check-logs/lint.log`
-- `tmp/release-evidence-check-logs/build.log`
-- `tmp/release-evidence-check-logs/native-doctor.log`
-- `tmp/release-evidence-check-logs/release-smoke.log`
-- `tmp/release-evidence-check-logs/release-review-check.log`
-- `tmp/release-evidence-check-logs/ci-maintenance-check.log`
-- `tmp/release-evidence-check-logs/first-release-check.log`
+- `<local-only evidence log: lint.log>`
+- `<local-only evidence log: build.log>`
+- `<local-only evidence log: native-doctor.log>`
+- `<local-only evidence log: release-smoke.log>`
+- `<local-only evidence log: release-review-check.log>`
+- `<local-only evidence log: ci-maintenance-check.log>`
+- `<local-only evidence log: first-release-check.log>`
+- `<local-only evidence log: public-safety-check.log>`
 
 ## Sanity checks
 
@@ -57,7 +59,8 @@ Preferred evidence log capture paths (for `release:evidence` defaults):
 - [ ] `release-notes.md` includes generated metadata and checksum table.
 - [ ] `release-notes.md` does **not** contain private/local machine paths.
 - [ ] No private files, secrets, or sensitive data are included in release notes or checked-in docs.
-- [ ] `tmp/release-evidence-check-logs/` is local-only and excluded from sharing.
+- [ ] `npm run release:public-safety-check` passes.
+- [ ] Raw evidence logs are local-only and excluded from sharing.
 
 ## Public artifact rules
 

@@ -33,6 +33,10 @@ const requirements = [
         pattern: '`npm run native:doctor`',
       },
       {
+        label: 'Template includes public safety verification',
+        pattern: '`npm run release:public-safety-check`',
+      },
+      {
         label: 'Template requires provenance artifact file',
         pattern: 'release-provenance.txt',
       },
@@ -78,6 +82,10 @@ const requirements = [
       {
         label: 'Readiness doc references release:smoke',
         pattern: 'release:smoke',
+      },
+      {
+        label: 'Readiness doc references public safety guard',
+        pattern: 'release:public-safety-check',
       },
       {
         label: 'Readiness doc references native doctor verification',

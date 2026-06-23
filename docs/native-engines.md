@@ -28,17 +28,19 @@ The Tauri v2 desktop app builds successfully on Windows.
 
 Paths shown below are examples; they should be configurable via your local environment:
 
-- Rust/Cargo: `${OPENFORGE_TOOLCHAIN_ROOT}/rust` (example default: workspace toolchain root).
-- FFmpeg tools: `${OPENFORGE_ROOT}/tools/ffmpeg`
-- Pandoc tools: `${OPENFORGE_ROOT}/tools/pandoc`
-- qpdf tools: `${OPENFORGE_ROOT}/tools/qpdf`
+- Rust/Cargo: `${NOMETER_TOOLCHAIN_ROOT}/rust` (example default: workspace toolchain root).
+- FFmpeg tools: `${NOMETER_ROOT}/tools/ffmpeg`
+- Pandoc tools: `${NOMETER_ROOT}/tools/pandoc`
+- qpdf tools: `${NOMETER_ROOT}/tools/qpdf`
 - FFmpeg sidecars: `src-tauri/binaries/ffmpeg-<host-triple>.exe` and `src-tauri/binaries/ffprobe-<host-triple>.exe`
 - Pandoc sidecar: `src-tauri/binaries/pandoc-<host-triple>.exe`
 - qpdf sidecar: `src-tauri/binaries/qpdf-<host-triple>.exe`
 - qpdf runtime DLLs: `src-tauri/binaries/*.dll`
-- Work directory: `${OPENFORGE_WORK_DIR}`
+- Work directory: `${NOMETER_WORK_DIR}`
 - Native save directory: current UI-configured save path
 - Bundler cache moved to a configured cache-safe directory after packaging.
+
+Legacy `OPENFORGE_*` variables are still supported for existing local setups, but new configuration should prefer `NOMETER_*`.
 
 Run:
 

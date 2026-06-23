@@ -26,6 +26,7 @@
     "release:evidence:run": "node scripts/release-evidence-run.mjs",
     "release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs",
     "release:evidence-index": "node scripts/release-evidence-index.mjs",
+    "release:public-safety-check": "node scripts/public-safety-check.mjs",
     "ci:maintenance-check": "node scripts/ci-maintenance-check.mjs",
     "release:first-release-check": "node scripts/first-release-check.mjs",
     "tauri": "node scripts/with-d-toolchain.mjs -- tauri",

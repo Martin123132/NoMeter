@@ -26,6 +26,7 @@ const config = {
     reviewCheck: resolve(repositoryRoot, options.reviewCheckEvidence || resolve(defaultLogDir, 'release-review-check.log')),
     maintenanceCheck: resolve(repositoryRoot, options.maintenanceCheckEvidence || resolve(defaultLogDir, 'ci-maintenance-check.log')),
     firstReleaseCheck: resolve(repositoryRoot, options.firstReleaseCheckEvidence || resolve(defaultLogDir, 'first-release-check.log')),
+    publicSafetyCheck: resolve(repositoryRoot, options.publicSafetyCheckEvidence || resolve(defaultLogDir, 'public-safety-check.log')),
   },
 }
 
@@ -65,6 +66,11 @@ const checks = [
     name: 'npm run release:first-release-check',
     command: npmCommand('run', ['release:first-release-check']),
     logFile: config.logs.firstReleaseCheck,
+  },
+  {
+    name: 'npm run release:public-safety-check',
+    command: npmCommand('run', ['release:public-safety-check', '--', '--artifact-dir', config.artifactDir]),
+    logFile: config.logs.publicSafetyCheck,
   },
 ]
 
@@ -149,6 +155,8 @@ function buildEvidenceArgs(config, rawArgs) {
     config.logs.maintenanceCheck,
     '--first-release-check-evidence',
     config.logs.firstReleaseCheck,
+    '--public-safety-check-evidence',
+    config.logs.publicSafetyCheck,
   ]
 
   if (rawArgs.length > 0) {
@@ -169,6 +177,7 @@ function parseArgs(argv) {
     reviewCheckEvidence: '',
     maintenanceCheckEvidence: '',
     firstReleaseCheckEvidence: '',
+    publicSafetyCheckEvidence: '',
     rawArgs: argv,
   }
 
@@ -187,6 +196,7 @@ function parseArgs(argv) {
       '--review-check-evidence',
       '--maintenance-check-evidence',
       '--first-release-check-evidence',
+      '--public-safety-check-evidence',
     ].includes(arg)) {
       if (!value || value.startsWith('--')) {
         console.error(`Missing value for ${arg}`)
@@ -220,6 +230,9 @@ function parseArgs(argv) {
           break
         case '--first-release-check-evidence':
           parsed.firstReleaseCheckEvidence = value
+          break
+        case '--public-safety-check-evidence':
+          parsed.publicSafetyCheckEvidence = value
           break
       }
 
@@ -265,6 +278,7 @@ Defaults:
   --review-check-evidence tmp/release-evidence-check-logs/release-review-check.log
   --maintenance-check-evidence tmp/release-evidence-check-logs/ci-maintenance-check.log
   --first-release-check-evidence tmp/release-evidence-check-logs/first-release-check.log
+  --public-safety-check-evidence tmp/release-evidence-check-logs/public-safety-check.log
 
 You can override any path or output with:
 
@@ -277,6 +291,7 @@ You can override any path or output with:
   --review-check-evidence <path>
   --maintenance-check-evidence <path>
   --first-release-check-evidence <path>
+  --public-safety-check-evidence <path>
 
 Run this for a full local evidence evidence capture and check log bundle:
 

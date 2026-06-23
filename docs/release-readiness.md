@@ -134,14 +134,7 @@ Defaults used by `release:evidence`:
 
 - Artifact directory: `outputs/release`
 - Output file: `docs/release-dry-run-evidence.md`
-- Evidence log paths:
-  - `tmp/release-evidence-check-logs/lint.log`
-  - `tmp/release-evidence-check-logs/build.log`
-  - `tmp/release-evidence-check-logs/native-doctor.log`
-  - `tmp/release-evidence-check-logs/release-smoke.log`
-  - `tmp/release-evidence-check-logs/release-review-check.log`
-  - `tmp/release-evidence-check-logs/ci-maintenance-check.log`
-  - `tmp/release-evidence-check-logs/first-release-check.log`
+- Evidence log paths are recorded as local-only labels, such as `<local-only evidence log: lint.log>`.
 
 All paths are overrideable via the underlying `release-evidence-index` options (for example `--artifact-dir`, `--output-file`, and `--lint-evidence`).
 
@@ -155,15 +148,32 @@ This writes an evidence sheet with:
   - `npm run release:review-check`
   - `npm run ci:maintenance-check`
   - `npm run release:first-release-check`
-- CI run URLs for `Web QA`, `Release metadata smoke`, `Release review guard`, `Native doctor`, `CI maintenance check`, `First release readiness check`
+- public-safety check output for `npm run release:public-safety-check`
+- CI run URLs for `Web QA`, `Release metadata smoke`, `Release review guard`, `Public safety check`, `Native doctor`, `CI maintenance check`, `First release readiness check`
 - expected artifact presence (`NoMeter_<version>_x64-setup.exe`, `NoMeter_<version>_x64_en-US.msi`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`)
 - public-safe review gates and sign-off fields
+
+## Public safety guard
+
+Before sharing release-facing material, run:
+
+```powershell
+npm run release:public-safety-check
+```
+
+For an explicit artifact folder:
+
+```powershell
+npm run release:public-safety-check -- --artifact-dir D:\path\to\artifacts
+```
+
+This scans release notes, evidence docs, provenance/checksum outputs, review templates, checklist docs, and proof HTML for private paths, raw local log references, local URLs, credentials, secret-looking strings, and private key material.
 
 ## Evidence log hygiene
 
 Keep evidence logs local and disposable before sharing:
 
-- `tmp/release-evidence-check-logs/` is intentionally a local temp folder only.
+- The evidence-run log folder is intentionally local temp output only.
 - It is gitignored and should not be attached to issues or PRs.
 - Run a cleanup after sharing:
 
@@ -294,11 +304,12 @@ Get-FileHash NoMeter_0.5.0_x64-setup.exe -Algorithm SHA256
 
 Keep CI runtime posture auditable for release-critical checks:
 
-- Required workflow jobs: `web-qa`, `release-smoke`, `release-review-guard`, `native-doctor`.
+- Required workflow jobs: `web-qa`, `release-smoke`, `release-review-guard`, `public-safety-check`, `native-doctor`.
 - Required job display names:
   - `Web QA`
   - `Release metadata smoke`
   - `Release review guard`
+  - `Public safety check`
   - `Native doctor`
 - Required action pins in `/.github/workflows/ci.yml`:
   - `actions/checkout@v7`
@@ -322,7 +333,7 @@ This guard fails if:
 - [First release checklist](first-release-checklist.md) contains:
   - expected public artifacts (`NoMeter_*.exe`, `NoMeter_*.msi`, `nometer-static.zip`),
   - required metadata outputs (`release-provenance.txt`, `checksums.sha256`, `release-notes.md`),
-  - required pre-publish commands (`release:prepare`, `release:notes`, `release:smoke`, `release:review-check`, `ci:maintenance-check`, `lint`, `build`, `native:doctor`),
+  - required pre-publish commands (`release:prepare`, `release:notes`, `release:smoke`, `release:review-check`, `release:public-safety-check`, `ci:maintenance-check`, `lint`, `build`, `native:doctor`),
   - and public-safe evidence gates.
 
 Run it directly:

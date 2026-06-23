@@ -7,7 +7,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolve(scriptDir, '..')
 const cargoHome = process.env.CARGO_HOME || 'D:\\Codex\\Toolchains\\rust\\cargo'
 const rustupHome = process.env.RUSTUP_HOME || 'D:\\Codex\\Toolchains\\rust\\rustup'
-const qpdfRoot = process.env.OPENFORGE_QPDF_ROOT || 'D:\\Codex\\OpenForge\\tools\\qpdf'
+const qpdfRoot = envValue('NOMETER_QPDF_ROOT', 'OPENFORGE_QPDF_ROOT') || 'D:\\Codex\\OpenForge\\tools\\qpdf'
 const binariesDir = join(projectRoot, 'src-tauri', 'binaries')
 const cargoBin = join(cargoHome, 'bin')
 const rustc = process.platform === 'win32' ? join(cargoBin, 'rustc.exe') : join(cargoBin, 'rustc')
@@ -78,4 +78,8 @@ function findFile(root, fileName) {
   }
 
   return null
+}
+
+function envValue(primaryName, legacyName) {
+  return process.env[primaryName] || process.env[legacyName] || ''
 }

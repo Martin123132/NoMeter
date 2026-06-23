@@ -9,6 +9,7 @@ const evidenceRunbookPath = resolve(repositoryRoot, 'docs', 'release-dry-run-evi
 const packageJsonPath = resolve(repositoryRoot, 'package.json')
 const gitignorePath = resolve(repositoryRoot, '.gitignore')
 const evidenceCleanupScriptPath = resolve(repositoryRoot, 'scripts', 'release-evidence-cleanup.mjs')
+const publicSafetyScriptPath = resolve(repositoryRoot, 'scripts', 'public-safety-check.mjs')
 
 let failed = false
 
@@ -33,6 +34,7 @@ checkFileContains(checklistPath, 'first release command requirements', [
   'npm run lint',
   'npm run build',
   'npm run native:doctor',
+  'npm run release:public-safety-check',
 ])
 
 checkFileContains(issueTemplatePath, 'release template command coverage', [
@@ -44,8 +46,9 @@ checkFileContains(issueTemplatePath, 'release template command coverage', [
   '`npm run native:doctor`',
   '`npm run release:evidence`',
   '`npm run release:evidence:run`',
-  'tmp/release-evidence-check-logs/lint.log',
-  'tmp/release-evidence-check-logs/build.log',
+  '`npm run release:public-safety-check`',
+  '<local-only evidence log: lint.log>',
+  '<local-only evidence log: build.log>',
   'release-provenance.txt',
   'checksums.sha256',
   'release-notes.md',
@@ -64,9 +67,11 @@ checkFileContains(readinessPath, 'release-readiness discoverability', [
   'release:evidence',
   'release:evidence:run',
   'release:evidence:cleanup',
-  'tmp/release-evidence-check-logs',
+  'release:public-safety-check',
+  '<local-only evidence log: lint.log>',
   'release-dry-run-evidence.md',
   'Release dry-run evidence index',
+  'Public safety guard',
   'Evidence log hygiene',
 ])
 
@@ -75,7 +80,8 @@ checkFileContains(checklistPath, 'first release evidence checklist coverage', [
   'npm run release:evidence',
   'npm run release:evidence:run',
   'docs/release-dry-run-evidence.md',
-  'tmp/release-evidence-check-logs',
+  '<local-only evidence log: lint.log>',
+  'npm run release:public-safety-check',
   'npm run release:evidence:cleanup',
   'release:notes -- --artifact-dir <artifact-dir>',
   'release:first-release-check',
@@ -83,10 +89,9 @@ checkFileContains(checklistPath, 'first release evidence checklist coverage', [
 
 checkFileContains(checklistPath, 'evidence-log hygiene coverage', [
   '## Evidence log hygiene (pre-share)',
-  'tmp/release-evidence-check-logs/',
   'npm run release:evidence:cleanup',
   'docs/release-dry-run-evidence.md',
-  'local-only evidence',
+  'local-only output',
 ])
 
 checkFileContains(evidenceRunbookPath, 'runbook coverage', [
@@ -96,6 +101,7 @@ checkFileContains(evidenceRunbookPath, 'runbook coverage', [
   'npm run native:doctor',
   'npm run release:smoke',
   'npm run release:first-release-check',
+  'npm run release:public-safety-check',
   'NoMeter_',
   '_x64-setup.exe',
   '_x64_en-US.msi',
@@ -113,16 +119,23 @@ checkFileContains(packageJsonPath, 'package script coverage', [
   '"release:evidence:run": "node scripts/release-evidence-run.mjs"',
   '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
   '"release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs"',
+  '"release:public-safety-check": "node scripts/public-safety-check.mjs"',
 ])
 
 checkFileContains(issueTemplatePath, 'release template evidence log coverage', [
   '`npm run release:evidence:cleanup`',
-  '`tmp/release-evidence-check-logs/`',
+  '`npm run release:public-safety-check`',
+  '<local-only evidence log: public-safety-check.log>',
 ])
 
 if (!existsSync(evidenceCleanupScriptPath)) {
   failed = true
   console.error(`[first-release-check] missing required file: ${evidenceCleanupScriptPath}`)
+}
+
+if (!existsSync(publicSafetyScriptPath)) {
+  failed = true
+  console.error(`[first-release-check] missing required file: ${publicSafetyScriptPath}`)
 }
 
 if (failed) {

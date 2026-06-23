@@ -24,6 +24,7 @@ const defaultEvidenceArgs = [
   ['--review-check-evidence', resolve(defaultLogDir, 'release-review-check.log')],
   ['--maintenance-check-evidence', resolve(defaultLogDir, 'ci-maintenance-check.log')],
   ['--first-release-check-evidence', resolve(defaultLogDir, 'first-release-check.log')],
+  ['--public-safety-check-evidence', resolve(defaultLogDir, 'public-safety-check.log')],
 ]
 
 const childArgs = buildChildArgs(requestedArgs, defaultEvidenceArgs)
@@ -82,6 +83,7 @@ This command calls release-evidence-index with repository defaults:
   --review-check-evidence tmp/release-evidence-check-logs/release-review-check.log
   --maintenance-check-evidence tmp/release-evidence-check-logs/ci-maintenance-check.log
   --first-release-check-evidence tmp/release-evidence-check-logs/first-release-check.log
+  --public-safety-check-evidence tmp/release-evidence-check-logs/public-safety-check.log
 
 You can override any default by passing the same flag(s) supported by
 release-evidence-index. Examples:

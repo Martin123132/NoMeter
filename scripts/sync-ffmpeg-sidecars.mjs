@@ -7,7 +7,7 @@ const scriptDir = dirname(fileURLToPath(import.meta.url))
 const projectRoot = resolve(scriptDir, '..')
 const cargoHome = process.env.CARGO_HOME || 'D:\\Codex\\Toolchains\\rust\\cargo'
 const rustupHome = process.env.RUSTUP_HOME || 'D:\\Codex\\Toolchains\\rust\\rustup'
-const ffmpegRoot = process.env.OPENFORGE_FFMPEG_ROOT || 'D:\\Codex\\OpenForge\\tools\\ffmpeg'
+const ffmpegRoot = envValue('NOMETER_FFMPEG_ROOT', 'OPENFORGE_FFMPEG_ROOT') || 'D:\\Codex\\OpenForge\\tools\\ffmpeg'
 const binariesDir = join(projectRoot, 'src-tauri', 'binaries')
 const cargoBin = join(cargoHome, 'bin')
 const rustc = process.platform === 'win32' ? join(cargoBin, 'rustc.exe') : join(cargoBin, 'rustc')
@@ -70,4 +70,8 @@ function findFile(root, fileName) {
   }
 
   return null
+}
+
+function envValue(primaryName, legacyName) {
+  return process.env[primaryName] || process.env[legacyName] || ''
 }

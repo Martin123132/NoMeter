@@ -1,12 +1,12 @@
 # Release Dry-Run Evidence Index
 
-Generated: 2026-06-22T07:56:08.364Z
+Generated: 2026-06-23T01:35:40.853Z
 
 Run metadata:
 - Release version: 0.5.0
-- Commit: c28072938e9c24f91f1410e6886d9f85a5ad8ace
+- Commit: f5596755f08af38f7fe513494e9a6d1b75575ec9
 - Branch: main
-- Artifact directory: D:\Codex\OpenForge\outputs\release
+- Artifact directory: outputs/release
 
 ## Required command evidence
 
@@ -14,13 +14,14 @@ Run each command and record terminal output path:
 
 | Command | Evidence path | Result |
 | --- | --- | --- |
-| npm run lint | <record path> | |
-| npm run build | <record path> | |
-| npm run native:doctor | <record path> | |
-| npm run release:smoke | <record path> | |
-| npm run release:review-check | <record path> | |
-| npm run ci:maintenance-check | <record path> | |
-| npm run release:first-release-check | <record path> | |
+| npm run lint | <local-only evidence log: lint.log> | |
+| npm run build | <local-only evidence log: build.log> | |
+| npm run native:doctor | <local-only evidence log: native-doctor.log> | |
+| npm run release:smoke | <local-only evidence log: release-smoke.log> | |
+| npm run release:review-check | <local-only evidence log: release-review-check.log> | |
+| npm run ci:maintenance-check | <local-only evidence log: ci-maintenance-check.log> | |
+| npm run release:first-release-check | <local-only evidence log: first-release-check.log> | |
+| npm run release:public-safety-check | <local-only evidence log: public-safety-check.log> | |
 
 ## CI evidence URLs
 
@@ -32,17 +33,18 @@ Run each command and record terminal output path:
 | Native doctor | <paste CI run URL> | |
 | CI maintenance check | <paste CI run URL> | |
 | First release readiness check | <paste CI run URL> | |
+| Public safety check | <paste CI run URL> | |
 
 ## Required artifacts
 
 | File | Location | Verified |
 | --- | --- | --- |
-| NoMeter_0.5.0_x64-setup.exe | D:\Codex\OpenForge\outputs\release\NoMeter_0.5.0_x64-setup.exe | NO |
-| NoMeter_0.5.0_x64_en-US.msi | D:\Codex\OpenForge\outputs\release\NoMeter_0.5.0_x64_en-US.msi | NO |
-| nometer-static.zip | D:\Codex\OpenForge\outputs\release\nometer-static.zip | NO |
-| release-provenance.txt | D:\Codex\OpenForge\outputs\release\release-provenance.txt | NO |
-| checksums.sha256 | D:\Codex\OpenForge\outputs\release\checksums.sha256 | NO |
-| release-notes.md | D:\Codex\OpenForge\outputs\release\release-notes.md | NO |
+| NoMeter_0.5.0_x64-setup.exe | outputs/release/NoMeter_0.5.0_x64-setup.exe | NO |
+| NoMeter_0.5.0_x64_en-US.msi | outputs/release/NoMeter_0.5.0_x64_en-US.msi | NO |
+| nometer-static.zip | outputs/release/nometer-static.zip | NO |
+| release-provenance.txt | outputs/release/release-provenance.txt | NO |
+| checksums.sha256 | outputs/release/checksums.sha256 | NO |
+| release-notes.md | outputs/release/release-notes.md | NO |
 
 ## Public-safe gates
 
@@ -50,3 +52,4 @@ Run each command and record terminal output path:
 - [ ] release-provenance.txt includes commit, branch, timestamp, and toolchain/runtime metadata
 - [ ] checksums.sha256 includes all expected public artifacts
 - [ ] release-notes.md includes artifact list and verification command guidance
+- [ ] npm run release:public-safety-check passes before sharing release-facing material

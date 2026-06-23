@@ -3,15 +3,15 @@ import { existsSync, readdirSync, statSync } from 'node:fs'
 import { delimiter, join, parse, resolve } from 'node:path'
 
 const projectRoot = resolve('.')
-const openForgeRoot = process.env.OPENFORGE_ROOT || 'D:\\Codex\\OpenForge'
-const toolchainRoot = process.env.OPENFORGE_TOOLCHAIN_ROOT || 'D:\\Codex\\Toolchains'
+const noMeterRoot = envValue('NOMETER_ROOT', 'OPENFORGE_ROOT') || 'D:\\Codex\\OpenForge'
+const toolchainRoot = envValue('NOMETER_TOOLCHAIN_ROOT', 'OPENFORGE_TOOLCHAIN_ROOT') || 'D:\\Codex\\Toolchains'
 const cargoHome = process.env.CARGO_HOME || join(toolchainRoot, 'rust', 'cargo')
 const rustupHome = process.env.RUSTUP_HOME || join(toolchainRoot, 'rust', 'rustup')
 const cargoBin = join(cargoHome, 'bin')
-const tempDir = process.env.OPENFORGE_TEMP || 'D:\\Codex\\Temp'
-const ffmpegRoot = process.env.OPENFORGE_FFMPEG_ROOT || join(openForgeRoot, 'tools', 'ffmpeg')
-const pandocRoot = process.env.OPENFORGE_PANDOC_ROOT || join(openForgeRoot, 'tools', 'pandoc')
-const qpdfRoot = process.env.OPENFORGE_QPDF_ROOT || join(openForgeRoot, 'tools', 'qpdf')
+const tempDir = envValue('NOMETER_TEMP', 'OPENFORGE_TEMP') || 'D:\\Codex\\Temp'
+const ffmpegRoot = envValue('NOMETER_FFMPEG_ROOT', 'OPENFORGE_FFMPEG_ROOT') || join(noMeterRoot, 'tools', 'ffmpeg')
+const pandocRoot = envValue('NOMETER_PANDOC_ROOT', 'OPENFORGE_PANDOC_ROOT') || join(noMeterRoot, 'tools', 'pandoc')
+const qpdfRoot = envValue('NOMETER_QPDF_ROOT', 'OPENFORGE_QPDF_ROOT') || join(noMeterRoot, 'tools', 'qpdf')
 const pathWithToolchain = existsSync(cargoBin)
   ? `${cargoBin}${delimiter}${process.env.PATH || ''}`
   : process.env.PATH || ''
@@ -21,7 +21,8 @@ const commonEnv = {
   RUSTUP_HOME: rustupHome,
   TEMP: tempDir,
   TMP: tempDir,
-  OPENFORGE_WORK_DIR: process.env.OPENFORGE_WORK_DIR || join(openForgeRoot, 'work'),
+  NOMETER_WORK_DIR: envValue('NOMETER_WORK_DIR', 'OPENFORGE_WORK_DIR') || join(noMeterRoot, 'work'),
+  OPENFORGE_WORK_DIR: envValue('NOMETER_WORK_DIR', 'OPENFORGE_WORK_DIR') || join(noMeterRoot, 'work'),
   PATH: pathWithToolchain,
 }
 const skipRequiredChecks = process.env.NOMETER_SKIP_REQUIRED === '1'
@@ -52,7 +53,7 @@ console.log(`Project: ${projectRoot}`)
 console.log(`Drive: ${drive}`)
 console.log(`Cargo home: ${cargoHome}`)
 console.log(`Rustup home: ${rustupHome}`)
-console.log(`Work dir: ${commonEnv.OPENFORGE_WORK_DIR}`)
+console.log(`Work dir: ${commonEnv.NOMETER_WORK_DIR}`)
 
 if (drive.startsWith('C:')) {
   failedRequired = true
@@ -121,6 +122,10 @@ function npmCheck() {
     required: true,
     shell: process.platform === 'win32',
   }
+}
+
+function envValue(primaryName, legacyName) {
+  return process.env[primaryName] || process.env[legacyName] || ''
 }
 
 function commandPath(command) {

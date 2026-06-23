@@ -2,14 +2,14 @@ import { cpSync, existsSync, mkdirSync, rmSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 
-const openForgeRoot = resolve(process.env.OPENFORGE_ROOT || 'D:\\Codex\\OpenForge')
-const destinationRoot = resolve(process.env.OPENFORGE_LOCALAPPDATA || join(openForgeRoot, 'tools', 'local-appdata'))
+const noMeterRoot = resolve(envValue('NOMETER_ROOT', 'OPENFORGE_ROOT') || 'D:\\Codex\\OpenForge')
+const destinationRoot = resolve(envValue('NOMETER_LOCALAPPDATA', 'OPENFORGE_LOCALAPPDATA') || join(noMeterRoot, 'tools', 'local-appdata'))
 const destination = join(destinationRoot, 'tauri')
 const localAppData = process.env.LOCALAPPDATA || join(process.env.USERPROFILE || homedir(), 'AppData', 'Local')
 const userLocalAppData = join(process.env.USERPROFILE || homedir(), 'AppData', 'Local')
 const candidates = [...new Set([join(localAppData, 'tauri'), join(localAppData, 'Tauri'), join(userLocalAppData, 'tauri'), join(userLocalAppData, 'Tauri')])]
 
-if (!destinationRoot.toLowerCase().startsWith(openForgeRoot.toLowerCase())) {
+if (!destinationRoot.toLowerCase().startsWith(noMeterRoot.toLowerCase())) {
   console.error(`Refusing to move Tauri cache outside the NoMeter workspace root: ${destinationRoot}`)
   process.exit(1)
 }
@@ -37,4 +37,8 @@ for (const source of candidates) {
 
 if (!moved) {
   console.log('no Tauri AppData cache found on C: to relocate')
+}
+
+function envValue(primaryName, legacyName) {
+  return process.env[primaryName] || process.env[legacyName] || ''
 }

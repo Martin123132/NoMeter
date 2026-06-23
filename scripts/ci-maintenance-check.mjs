@@ -42,6 +42,18 @@ const jobRequirements = [
     ],
   },
   {
+    id: 'public-safety-check',
+    displayName: 'Public safety check',
+    steps: [
+      { name: 'Checkout', action: 'actions/checkout@v7' },
+      {
+        name: 'Setup Node.js',
+        action: 'actions/setup-node@v6',
+        nodeVersion: '22',
+      },
+    ],
+  },
+  {
     id: 'native-doctor',
     displayName: 'Native doctor',
     steps: [

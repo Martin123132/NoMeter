@@ -1,6 +1,6 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { execSync } from 'node:child_process'
-import { dirname, resolve } from 'node:path'
+import { basename, dirname, relative, resolve } from 'node:path'
 
 const args = parseArgs(process.argv.slice(2))
 const repositoryRoot = process.cwd()
@@ -28,6 +28,7 @@ const template = buildTemplate({
     nativeDoctor: args.nativeDoctorRunUrl || '',
     maintenance: args.maintenanceRunUrl || '',
     firstRelease: args.firstReleaseRunUrl || '',
+    publicSafety: args.publicSafetyRunUrl || '',
   },
   commandEvidence: {
     lint: args.lintEvidence || '',
@@ -37,6 +38,7 @@ const template = buildTemplate({
     reviewCheck: args.reviewCheckEvidence || '',
     maintenanceCheck: args.maintenanceEvidence || '',
     firstReleaseCheck: args.firstReleaseEvidence || '',
+    publicSafetyCheck: args.publicSafetyEvidence || '',
   },
   artifactVerification,
   strict,
@@ -78,7 +80,7 @@ Run metadata:
 - Release version: ${releaseVersion}
 - Commit: ${commitSha}
 - Branch: ${releaseBranch}
-- Artifact directory: ${artifactDir}
+- Artifact directory: ${formatArtifactDirectory(artifactDir)}
 
 ## Required command evidence
 
@@ -86,13 +88,14 @@ Run each command and record terminal output path:
 
 | Command | Evidence path | Result |
 | --- | --- | --- |
-| npm run lint | ${commandEvidence.lint || '<record path>'} | |
-| npm run build | ${commandEvidence.build || '<record path>'} | |
-| npm run native:doctor | ${commandEvidence.nativeDoctor || '<record path>'} | |
-| npm run release:smoke | ${commandEvidence.smoke || '<record path>'} | |
-| npm run release:review-check | ${commandEvidence.reviewCheck || '<record path>'} | |
-| npm run ci:maintenance-check | ${commandEvidence.maintenanceCheck || '<record path>'} | |
-| npm run release:first-release-check | ${commandEvidence.firstReleaseCheck || '<record path>'} | |
+| npm run lint | ${formatEvidencePath(commandEvidence.lint)} | |
+| npm run build | ${formatEvidencePath(commandEvidence.build)} | |
+| npm run native:doctor | ${formatEvidencePath(commandEvidence.nativeDoctor)} | |
+| npm run release:smoke | ${formatEvidencePath(commandEvidence.smoke)} | |
+| npm run release:review-check | ${formatEvidencePath(commandEvidence.reviewCheck)} | |
+| npm run ci:maintenance-check | ${formatEvidencePath(commandEvidence.maintenanceCheck)} | |
+| npm run release:first-release-check | ${formatEvidencePath(commandEvidence.firstReleaseCheck)} | |
+| npm run release:public-safety-check | ${formatEvidencePath(commandEvidence.publicSafetyCheck)} | |
 
 ## CI evidence URLs
 
@@ -104,6 +107,7 @@ Run each command and record terminal output path:
 | Native doctor | ${runUrls.nativeDoctor || '<paste CI run URL>'} | |
 | CI maintenance check | ${runUrls.maintenance || '<paste CI run URL>'} | |
 | First release readiness check | ${runUrls.firstRelease || '<paste CI run URL>'} | |
+| Public safety check | ${runUrls.publicSafety || '<paste CI run URL>'} | |
 
 ## Required artifacts
 
@@ -115,6 +119,7 @@ ${artifacts}
 - [ ] release-provenance.txt includes commit, branch, timestamp, and toolchain/runtime metadata
 - [ ] checksums.sha256 includes all expected public artifacts
 - [ ] release-notes.md includes artifact list and verification command guidance
+- [ ] npm run release:public-safety-check passes before sharing release-facing material
 `
 }
 
@@ -133,7 +138,7 @@ function getArtifactRows(artifactDir, version, shouldCheck) {
   for (const fileName of expectedArtifacts) {
     const filePath = resolve(artifactDir, fileName)
     const exists = existsSync(filePath) ? 'YES' : 'NO'
-    rows.push(`| ${fileName} | ${filePath} | ${exists} |`)
+    rows.push(`| ${fileName} | ${formatArtifactPath(artifactDir, fileName)} | ${exists} |`)
     if (shouldCheck && !existsSync(filePath)) {
       missing = true
     }
@@ -157,6 +162,45 @@ function loadPackageJson() {
   } catch (_error) {
     return { version: '0.5.0' }
   }
+}
+
+function formatArtifactDirectory(directoryPath) {
+  const relativePath = relativeToRepository(directoryPath)
+  if (relativePath) {
+    return relativePath
+  }
+
+  return '<artifact-dir>'
+}
+
+function formatArtifactPath(directoryPath, fileName) {
+  const directoryLabel = formatArtifactDirectory(directoryPath)
+  if (directoryLabel === '.') {
+    return fileName
+  }
+
+  return `${directoryLabel.replace(/\/$/, '')}/${fileName}`
+}
+
+function formatEvidencePath(filePath) {
+  if (!filePath) {
+    return '<record path>'
+  }
+
+  return `<local-only evidence log: ${basename(filePath)}>`
+}
+
+function relativeToRepository(targetPath) {
+  const relativePath = relative(repositoryRoot, resolve(targetPath)).replaceAll('\\', '/')
+  if (!relativePath || relativePath === '.') {
+    return '.'
+  }
+
+  if (relativePath.startsWith('../') || relativePath === '..' || /^[A-Za-z]:/.test(relativePath)) {
+    return ''
+  }
+
+  return relativePath
 }
 
 function isValidEvidencePath(filePath) {
@@ -190,6 +234,7 @@ function parseArgs(argv) {
     nativeDoctorRunUrl: '',
     maintenanceRunUrl: '',
     firstReleaseRunUrl: '',
+    publicSafetyRunUrl: '',
     lintEvidence: '',
     buildEvidence: '',
     nativeDoctorEvidence: '',
@@ -197,6 +242,7 @@ function parseArgs(argv) {
     reviewCheckEvidence: '',
     maintenanceEvidence: '',
     firstReleaseEvidence: '',
+    publicSafetyEvidence: '',
     commitSha: '',
     branch: 'main',
     version: undefined,
@@ -217,6 +263,7 @@ function parseArgs(argv) {
       '--native-doctor-run',
       '--maintenance-run',
       '--first-release-run',
+      '--public-safety-run',
       '--commit-sha',
       '--branch',
       '--version',
@@ -227,6 +274,7 @@ function parseArgs(argv) {
       '--review-check-evidence',
       '--maintenance-check-evidence',
       '--first-release-check-evidence',
+      '--public-safety-check-evidence',
     ].includes(arg)) {
       const next = argv[i + 1]
       if (!next || next.startsWith('--')) {
@@ -259,6 +307,9 @@ function parseArgs(argv) {
         case '--first-release-run':
           options.firstReleaseRunUrl = next
           break
+        case '--public-safety-run':
+          options.publicSafetyRunUrl = next
+          break
         case '--commit-sha':
           options.commitSha = next
           break
@@ -288,6 +339,9 @@ function parseArgs(argv) {
           break
         case '--first-release-check-evidence':
           options.firstReleaseEvidence = next
+          break
+        case '--public-safety-check-evidence':
+          options.publicSafetyEvidence = next
           break
         default:
           break
@@ -335,6 +389,7 @@ Options:
   --native-doctor-run <url>    CI run URL for native doctor
   --maintenance-run <url>      CI run URL for CI maintenance check
   --first-release-run <url>    CI run URL for first release readiness check
+  --public-safety-run <url>    CI run URL for public safety check
   --lint-evidence <path>      Local log path for npm run lint
   --build-evidence <path>     Local log path for npm run build
   --native-doctor-evidence <path>  Local log path for npm run native:doctor
@@ -342,6 +397,7 @@ Options:
   --review-check-evidence <path>   Local log path for npm run release:review-check
   --maintenance-check-evidence <path> Local log path for npm run ci:maintenance-check
   --first-release-check-evidence <path> Local log path for npm run release:first-release-check
+  --public-safety-check-evidence <path> Local log path for npm run release:public-safety-check
   --help, -h                  Show this help message
 `)
 }

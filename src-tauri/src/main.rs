@@ -310,9 +310,11 @@ fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String
         return Ok(path);
     }
 
-    if let Ok(value) = std::env::var("OPENFORGE_WORK_DIR") {
-        if let Some(path) = configured_folder(Some(&value), "work")? {
-            return Ok(path);
+    for env_name in ["NOMETER_WORK_DIR", "OPENFORGE_WORK_DIR"] {
+        if let Ok(value) = std::env::var(env_name) {
+            if let Some(path) = configured_folder(Some(&value), "work")? {
+                return Ok(path);
+            }
         }
     }
 
@@ -321,7 +323,7 @@ fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String
         return Ok(d_drive_root.join("work"));
     }
 
-    Ok(std::env::temp_dir().join("openforge-work"))
+    Ok(std::env::temp_dir().join("nometer-work"))
 }
 
 fn openforge_output_dir(folders: Option<&NativeFolders>) -> Result<Option<PathBuf>, String> {
@@ -329,9 +331,11 @@ fn openforge_output_dir(folders: Option<&NativeFolders>) -> Result<Option<PathBu
         return Ok(Some(path));
     }
 
-    if let Ok(value) = std::env::var("OPENFORGE_OUTPUT_DIR") {
-        if let Some(path) = configured_folder(Some(&value), "save")? {
-            return Ok(Some(path));
+    for env_name in ["NOMETER_OUTPUT_DIR", "OPENFORGE_OUTPUT_DIR"] {
+        if let Ok(value) = std::env::var(env_name) {
+            if let Some(path) = configured_folder(Some(&value), "save")? {
+                return Ok(Some(path));
+            }
         }
     }
 
