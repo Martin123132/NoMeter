@@ -89,7 +89,7 @@ You can override any default by passing the same flag(s) supported by
 release-evidence-index. Examples:
 
   npm run release:evidence -- --artifact-dir D:\\path\\to\\artifacts
-  npm run release:evidence -- --output-file D:\\tmp\\evidence.md --lint-evidence C:\\logs\\lint.log
+  npm run release:evidence -- --output-file D:\\path\\to\\evidence.md --lint-evidence D:\\path\\to\\lint.log
 
   Run the wrapped index command directly for all supported options:
   npm run release:evidence -- --help

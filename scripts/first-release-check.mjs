@@ -110,8 +110,9 @@ checkFileContains(evidenceRunbookPath, 'runbook coverage', [
   'release-provenance.txt',
 ])
 
-checkFileContains(gitignorePath, 'evidence log ignore coverage', [
-  'tmp/release-evidence-check-logs/',
+checkFileContains(gitignorePath, 'local generated output ignore coverage', [
+  'outputs/',
+  'tmp/',
 ])
 
 checkFileContains(packageJsonPath, 'package script coverage', [

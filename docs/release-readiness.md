@@ -136,6 +136,8 @@ Defaults used by `release:evidence`:
 - Output file: `docs/release-dry-run-evidence.md`
 - Evidence log paths are recorded as local-only labels, such as `<local-only evidence log: lint.log>`.
 
+The default `outputs/` artifact folder and `tmp/` evidence-log folder are gitignored local generated output. Keep installers, checksums, provenance files, draft notes, and raw command logs out of commits unless a future release process explicitly promotes sanitized files.
+
 All paths are overrideable via the underlying `release-evidence-index` options (for example `--artifact-dir`, `--output-file`, and `--lint-evidence`).
 
 This writes an evidence sheet with:
@@ -174,7 +176,7 @@ This scans release notes, evidence docs, provenance/checksum outputs, review tem
 Keep evidence logs local and disposable before sharing:
 
 - The evidence-run log folder is intentionally local temp output only.
-- It is gitignored and should not be attached to issues or PRs.
+- It is gitignored, along with default generated release artifacts in `outputs/`, and should not be attached to issues or PRs.
 - Run a cleanup after sharing:
 
 ```powershell

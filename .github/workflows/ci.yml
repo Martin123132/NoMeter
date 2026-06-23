@@ -113,9 +113,9 @@ jobs:
 
       - name: Run native environment checks
         env:
-          OPENFORGE_ROOT: ${{ github.workspace }}
-          OPENFORGE_TEMP: ${{ github.workspace }}/tmp
-          OPENFORGE_WORK_DIR: ${{ github.workspace }}/work
+          NOMETER_ROOT: ${{ github.workspace }}
+          NOMETER_TEMP: ${{ github.workspace }}/tmp
+          NOMETER_WORK_DIR: ${{ github.workspace }}/work
           NOMETER_SKIP_REQUIRED: "1"
         run: npm run native:doctor
 

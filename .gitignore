@@ -10,6 +10,7 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+outputs/
 src-tauri/target
 src-tauri/gen
 src-tauri/binaries/*.exe
@@ -21,8 +22,7 @@ openforge-work
 tools
 *.tsbuildinfo
 *.local
-tmp/release-evidence-check-logs/
-tmp/release-evidence-check-logs/*
+tmp/
 
 # Editor directories and files
 .vscode/*

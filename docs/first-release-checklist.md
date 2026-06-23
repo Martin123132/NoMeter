@@ -43,6 +43,8 @@ Before creating a release, confirm all expected public outputs are present in th
 - `docs/release-dry-run-evidence.md`
 - local-only evidence log labels such as `<local-only evidence log: lint.log>`
 
+`outputs/` and `tmp/` are gitignored local generated-output folders. Do not commit installers, checksums, provenance, draft notes, or raw logs from those folders.
+
 ## Public-safe review gates (must pass)
 
 - [ ] All listed files are generated in a sanitized/public-safe artifact directory.
@@ -53,6 +55,7 @@ Before creating a release, confirm all expected public outputs are present in th
 - [ ] GitHub issue template references and release docs agree on release commands and artifacts.
 - [ ] `npm run release:public-safety-check` passes before any release-facing material is shared.
 - [ ] Evidence-run logs are treated as local-only output; run `npm run release:evidence:cleanup` before sharing or archiving evidence bundles.
+- [ ] Generated `outputs/` artifacts and `tmp/` logs remain local-only and uncommitted.
 
 ## Evidence log hygiene (pre-share)
 

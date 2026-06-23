@@ -1,10 +1,10 @@
 # Release Dry-Run Evidence Index
 
-Generated: 2026-06-23T01:35:40.853Z
+Generated: 2026-06-23T17:37:34.991Z
 
 Run metadata:
 - Release version: 0.5.0
-- Commit: f5596755f08af38f7fe513494e9a6d1b75575ec9
+- Commit: 9507e1f4912b17065d229b0774725bbbcbccc573
 - Branch: main
 - Artifact directory: outputs/release
 
@@ -39,12 +39,12 @@ Run each command and record terminal output path:
 
 | File | Location | Verified |
 | --- | --- | --- |
-| NoMeter_0.5.0_x64-setup.exe | outputs/release/NoMeter_0.5.0_x64-setup.exe | NO |
-| NoMeter_0.5.0_x64_en-US.msi | outputs/release/NoMeter_0.5.0_x64_en-US.msi | NO |
-| nometer-static.zip | outputs/release/nometer-static.zip | NO |
-| release-provenance.txt | outputs/release/release-provenance.txt | NO |
-| checksums.sha256 | outputs/release/checksums.sha256 | NO |
-| release-notes.md | outputs/release/release-notes.md | NO |
+| NoMeter_0.5.0_x64-setup.exe | outputs/release/NoMeter_0.5.0_x64-setup.exe | YES |
+| NoMeter_0.5.0_x64_en-US.msi | outputs/release/NoMeter_0.5.0_x64_en-US.msi | YES |
+| nometer-static.zip | outputs/release/nometer-static.zip | YES |
+| release-provenance.txt | outputs/release/release-provenance.txt | YES |
+| checksums.sha256 | outputs/release/checksums.sha256 | YES |
+| release-notes.md | outputs/release/release-notes.md | YES |
 
 ## Public-safe gates
 
