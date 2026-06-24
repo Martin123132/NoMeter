@@ -14,6 +14,7 @@ console.log(`Artifacts: ${artifactDir}`)
 console.log(`Working dir: ${process.cwd()}`)
 
 if (!args.skipLint) runStep('lint', npmCommand('run', ['lint']))
+if (!args.skipLicense) runStep('license:positioning-check', npmCommand('run', ['license:positioning-check']))
 if (!args.skipBuild) runStep('build', npmCommand('run', ['build']))
 if (!args.skipDoctor) runStep('native:doctor', npmCommand('run', ['native:doctor']))
 
@@ -69,6 +70,7 @@ function parseArgs(argv) {
   const options = {
     artifactDir: undefined,
     skipLint: false,
+    skipLicense: false,
     skipBuild: false,
     skipDoctor: false,
     strictChecksums: true,
@@ -95,6 +97,11 @@ function parseArgs(argv) {
 
     if (arg === '--skip-lint') {
       options.skipLint = true
+      continue
+    }
+
+    if (arg === '--skip-license') {
+      options.skipLicense = true
       continue
     }
 
@@ -128,13 +135,14 @@ Usage:
 Options:
   --artifact-dir, -a      Artifact directory for provenance/checksum outputs (default: outputs)
   --skip-lint             Skip npm run lint
+  --skip-license          Skip npm run license:positioning-check
   --skip-build            Skip npm run build
   --skip-doctor           Skip npm run native:doctor
   --non-strict            Do not fail if no matching artifacts are found
   --help, -h              Show this help message
 
 Description:
-  Runs lint, web build, native doctor, then writes release provenance and checksums.
+  Runs lint, licence positioning, web build, native doctor, then writes release provenance and checksums.
 
 Environment:
   NOMETER_ARTIFACT_DIR

@@ -18,6 +18,7 @@ These are expected in an output directory you control during release prep, typic
 
 1. Validate code health:
    - `npm run lint`
+   - `npm run license:positioning-check`
    - `npm run build`
    - `npm run native:doctor`
 2. Build release artifacts:
@@ -45,6 +46,7 @@ npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 This runs (in order):
 
 - `npm run lint`
+- `npm run license:positioning-check`
 - `npm run build`
 - `npm run native:doctor`
 - `npm run release:provenance -- --artifact-dir <path>`
@@ -55,6 +57,8 @@ To run in constrained environments (e.g., if you are only validating metadata), 
 ```powershell
 npm run release:prepare -- --artifact-dir D:\path\to\artifacts --skip-build --skip-doctor --non-strict
 ```
+
+Use `--skip-license` only for a narrowly scoped metadata test where public wording has already been checked.
 
 ## One-command release draft generation
 
@@ -121,6 +125,7 @@ npm run release:evidence:run
 This command runs:
 
 - `npm run lint`
+- `npm run license:positioning-check`
 - `npm run qa:guided-flow-check`
 - `npm run build`
 - `npm run native:doctor`
@@ -135,16 +140,17 @@ Defaults used by `release:evidence`:
 
 - Artifact directory: `outputs/release`
 - Output file: `docs/release-dry-run-evidence.md`
-- Evidence log paths are recorded as local-only labels, such as `<local-only evidence log: lint.log>` and `<local-only evidence log: guided-flow-check.log>`.
+- Evidence log paths are recorded as local-only labels, such as `<local-only evidence log: lint.log>`, `<local-only evidence log: license-positioning-check.log>`, and `<local-only evidence log: guided-flow-check.log>`.
 
 The default `outputs/` artifact folder and `tmp/` evidence-log folder are gitignored local generated output. Keep installers, checksums, provenance files, draft notes, and raw command logs out of commits unless a future release process explicitly promotes sanitized files.
 
-All paths are overrideable via the underlying `release-evidence-index` options (for example `--artifact-dir`, `--output-file`, `--lint-evidence`, and `--guided-flow-evidence`).
+All paths are overrideable via the underlying `release-evidence-index` options (for example `--artifact-dir`, `--output-file`, `--lint-evidence`, `--license-positioning-evidence`, and `--guided-flow-evidence`).
 
 This writes an evidence sheet with:
 
 - command outputs for:
   - `npm run lint`
+  - `npm run license:positioning-check`
   - `npm run qa:guided-flow-check`
   - `npm run build`
   - `npm run native:doctor`
@@ -316,6 +322,7 @@ Keep CI runtime posture auditable for release-critical checks:
   - `Public safety check`
   - `Native doctor`
 - Required `Web QA` guard step:
+  - `npm run license:positioning-check`
   - `npm run qa:guided-flow-check`
 - Required action pins in `/.github/workflows/ci.yml`:
   - `actions/checkout@v7`
@@ -340,7 +347,7 @@ This guard fails if:
 - [First release checklist](first-release-checklist.md) contains:
   - expected public artifacts (`NoMeter_*.exe`, `NoMeter_*.msi`, `nometer-static.zip`),
   - required metadata outputs (`release-provenance.txt`, `checksums.sha256`, `release-notes.md`),
-  - required pre-publish commands (`release:prepare`, `release:notes`, `release:smoke`, `release:review-check`, `release:public-safety-check`, `ci:maintenance-check`, `qa:guided-flow-check`, `lint`, `build`, `native:doctor`),
+  - required pre-publish commands (`release:prepare`, `release:notes`, `release:smoke`, `release:review-check`, `release:public-safety-check`, `ci:maintenance-check`, `license:positioning-check`, `qa:guided-flow-check`, `lint`, `build`, `native:doctor`),
   - and public-safe evidence gates.
 
 Run it directly:

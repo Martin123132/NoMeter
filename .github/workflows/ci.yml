@@ -28,6 +28,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Verify license positioning
+        run: npm run license:positioning-check
+
       - name: Run guided flow regression guard
         run: npm run qa:guided-flow-check
 

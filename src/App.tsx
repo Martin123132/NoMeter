@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Download,
   FileText,
+  FolderOpen,
   FolderOutput,
   HardDrive,
   History,
@@ -39,6 +40,7 @@ import {
   getNativeRuntimeStatus,
   nativeEngineCatalog,
   optimizePdfFile,
+  pickNativeFolder,
   transcodeMediaFile,
   type DocumentOutputFormat,
   type NativeFolders,
@@ -373,6 +375,35 @@ function App() {
   const openFilePicker = useCallback(() => {
     fileInputRef.current?.click()
   }, [])
+
+  const chooseNativeFolder = useCallback(
+    async (field: keyof NativeFolders) => {
+      if (!nativeStatus.available) {
+        setBanner({
+          tone: 'warning',
+          text: 'Folder picker is available in the NoMeter desktop app. You can still type an absolute D: path here.',
+        })
+        return
+      }
+
+      try {
+        const selected = await pickNativeFolder(nativeFolders[field])
+        if (!selected) return
+
+        setNativeFolders((current) => ({ ...current, [field]: selected }))
+        setBanner({
+          tone: 'success',
+          text: `${field === 'workDir' ? 'Work' : 'Save'} folder updated.`,
+        })
+      } catch (error) {
+        setBanner({
+          tone: 'danger',
+          text: error instanceof Error ? error.message : 'Could not open the folder picker.',
+        })
+      }
+    },
+    [nativeFolders, nativeStatus.available],
+  )
 
   const shouldFollowSuggestedTool =
     suggestedTool !== null &&
@@ -1501,7 +1532,7 @@ function App() {
           </div>
           <div>
             <strong>NoMeter</strong>
-            <span>No credits. No uploads.</span>
+            <span>Free personal use. No uploads.</span>
           </div>
         </div>
 
@@ -1526,7 +1557,7 @@ function App() {
           <ShieldCheck size={18} />
           <div>
             <span>Local-first</span>
-            <strong>No limits. No uploads.</strong>
+            <strong>Free personal use. No uploads.</strong>
           </div>
         </div>
 
@@ -2455,34 +2486,68 @@ function App() {
                   <ShieldCheck size={15} />
                   <span>D: defaults stay active until you choose another non-system folder. C: paths are blocked.</span>
                 </div>
-                <label className="path-field">
-                  <span>
+                <div className="path-field">
+                  <label htmlFor="native-work-folder">
                     <HardDrive size={15} />
                     Work folder
-                  </span>
-                  <input
-                    type="text"
-                    value={nativeFolders.workDir}
-                    spellCheck={false}
-                    onChange={(event) =>
-                      setNativeFolders((current) => ({ ...current, workDir: event.target.value }))
-                    }
-                  />
-                </label>
-                <label className="path-field">
-                  <span>
+                  </label>
+                  <div className="path-input-row">
+                    <input
+                      id="native-work-folder"
+                      type="text"
+                      value={nativeFolders.workDir}
+                      spellCheck={false}
+                      onChange={(event) =>
+                        setNativeFolders((current) => ({ ...current, workDir: event.target.value }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="path-picker-button"
+                      onClick={() => chooseNativeFolder('workDir')}
+                      disabled={!nativeStatus.available}
+                      title={
+                        nativeStatus.available
+                          ? 'Choose native work folder'
+                          : 'Folder picker is available in the desktop app'
+                      }
+                    >
+                      <FolderOpen size={15} />
+                      Choose
+                    </button>
+                  </div>
+                </div>
+                <div className="path-field">
+                  <label htmlFor="native-save-folder">
                     <FolderOutput size={15} />
                     Save folder
-                  </span>
-                  <input
-                    type="text"
-                    value={nativeFolders.outputDir}
-                    spellCheck={false}
-                    onChange={(event) =>
-                      setNativeFolders((current) => ({ ...current, outputDir: event.target.value }))
-                    }
-                  />
-                </label>
+                  </label>
+                  <div className="path-input-row">
+                    <input
+                      id="native-save-folder"
+                      type="text"
+                      value={nativeFolders.outputDir}
+                      spellCheck={false}
+                      onChange={(event) =>
+                        setNativeFolders((current) => ({ ...current, outputDir: event.target.value }))
+                      }
+                    />
+                    <button
+                      type="button"
+                      className="path-picker-button"
+                      onClick={() => chooseNativeFolder('outputDir')}
+                      disabled={!nativeStatus.available}
+                      title={
+                        nativeStatus.available
+                          ? 'Choose native save folder'
+                          : 'Folder picker is available in the desktop app'
+                      }
+                    >
+                      <FolderOpen size={15} />
+                      Choose
+                    </button>
+                  </div>
+                </div>
                 <div className="folder-actions">
                   <button type="button" className="ghost-button" onClick={() => setNativeFolders(defaultNativeFolders)}>
                     <RotateCcw size={16} />
@@ -2620,7 +2685,7 @@ async function createSampleFiles(options: { includeDocument?: boolean; includeMe
     color: rgb(0.32, 0.4, 0.36),
   })
   page.drawRectangle({ x: 72, y: 590, width: 451, height: 76, color: rgb(0.93, 0.98, 0.95) })
-  page.drawText('No credits. No limits. No uploads.', {
+  page.drawText('Free personal use. No uploads.', {
     x: 92,
     y: 620,
     size: 16,
@@ -2653,8 +2718,7 @@ function createSampleMarkdownFile() {
     '',
     '## Promise',
     '',
-    '- No credits',
-    '- No limits',
+    '- Free personal use',
     '- No uploads',
     '',
     '| Engine | Status |',

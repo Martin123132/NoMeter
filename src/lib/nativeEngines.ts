@@ -109,6 +109,23 @@ export async function getNativeRuntimeStatus(): Promise<NativeRuntimeStatus> {
   }
 }
 
+export async function pickNativeFolder(defaultPath?: string): Promise<string | null> {
+  if (!isTauriRuntime()) {
+    throw new Error('Folder picker requires the NoMeter desktop app.')
+  }
+
+  const { open } = await import('@tauri-apps/plugin-dialog')
+  const selected = await open({
+    title: 'Choose NoMeter folder',
+    directory: true,
+    multiple: false,
+    defaultPath: defaultPath?.trim() || undefined,
+    canCreateDirectories: true,
+  })
+
+  return typeof selected === 'string' ? selected : null
+}
+
 export function getNativeCommandPreview(engine: NativeEngine) {
   return `${engine.command} via ${engine.sidecarName} sidecar`
 }

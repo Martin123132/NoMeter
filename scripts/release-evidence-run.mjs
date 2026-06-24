@@ -20,6 +20,7 @@ const config = {
   outputFile: resolve(repositoryRoot, options.outputFile || defaultOutputFile),
   logs: {
     lint: resolve(repositoryRoot, options.lintEvidence || resolve(defaultLogDir, 'lint.log')),
+    licensePositioning: resolve(repositoryRoot, options.licensePositioningEvidence || resolve(defaultLogDir, 'license-positioning-check.log')),
     guidedFlow: resolve(repositoryRoot, options.guidedFlowEvidence || resolve(defaultLogDir, 'guided-flow-check.log')),
     build: resolve(repositoryRoot, options.buildEvidence || resolve(defaultLogDir, 'build.log')),
     nativeDoctor: resolve(repositoryRoot, options.nativeDoctorEvidence || resolve(defaultLogDir, 'native-doctor.log')),
@@ -37,6 +38,11 @@ const checks = [
     name: 'npm run lint',
     command: npmCommand('run', ['lint']),
     logFile: config.logs.lint,
+  },
+  {
+    name: 'npm run license:positioning-check',
+    command: npmCommand('run', ['license:positioning-check']),
+    logFile: config.logs.licensePositioning,
   },
   {
     name: 'npm run qa:guided-flow-check',
@@ -149,6 +155,8 @@ function buildEvidenceArgs(config, rawArgs) {
     config.outputFile,
     '--lint-evidence',
     config.logs.lint,
+    '--license-positioning-evidence',
+    config.logs.licensePositioning,
     '--guided-flow-evidence',
     config.logs.guidedFlow,
     '--build-evidence',
@@ -179,6 +187,7 @@ function parseArgs(argv) {
     artifactDir: '',
     outputFile: '',
     lintEvidence: '',
+    licensePositioningEvidence: '',
     guidedFlowEvidence: '',
     buildEvidence: '',
     nativeDoctorEvidence: '',
@@ -199,6 +208,7 @@ function parseArgs(argv) {
       '--artifact-dir',
       '--output-file',
       '--lint-evidence',
+      '--license-positioning-evidence',
       '--guided-flow-evidence',
       '--build-evidence',
       '--native-doctor-evidence',
@@ -222,6 +232,9 @@ function parseArgs(argv) {
           break
         case '--lint-evidence':
           parsed.lintEvidence = value
+          break
+        case '--license-positioning-evidence':
+          parsed.licensePositioningEvidence = value
           break
         case '--guided-flow-evidence':
           parsed.guidedFlowEvidence = value
@@ -285,6 +298,7 @@ Defaults:
   --artifact-dir outputs/release
   --output-file docs/release-dry-run-evidence.md
   --lint-evidence tmp/release-evidence-check-logs/lint.log
+  --license-positioning-evidence tmp/release-evidence-check-logs/license-positioning-check.log
   --guided-flow-evidence tmp/release-evidence-check-logs/guided-flow-check.log
   --build-evidence tmp/release-evidence-check-logs/build.log
   --native-doctor-evidence tmp/release-evidence-check-logs/native-doctor.log
@@ -299,6 +313,7 @@ You can override any path or output with:
   --artifact-dir <path>
   --output-file <path>
   --lint-evidence <path>
+  --license-positioning-evidence <path>
   --guided-flow-evidence <path>
   --build-evidence <path>
   --native-doctor-evidence <path>

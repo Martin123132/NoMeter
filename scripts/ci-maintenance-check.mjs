@@ -110,6 +110,10 @@ for (const job of jobRequirements) {
 
 const requiredRunSteps = [
   {
+    label: 'license positioning guard',
+    snippets: ['Verify license positioning', 'run: npm run license:positioning-check'],
+  },
+  {
     label: 'guided flow regression guard',
     snippets: ['Run guided flow regression guard', 'run: npm run qa:guided-flow-check'],
   },

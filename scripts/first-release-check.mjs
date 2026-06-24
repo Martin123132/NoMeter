@@ -11,6 +11,7 @@ const gitignorePath = resolve(repositoryRoot, '.gitignore')
 const evidenceCleanupScriptPath = resolve(repositoryRoot, 'scripts', 'release-evidence-cleanup.mjs')
 const publicSafetyScriptPath = resolve(repositoryRoot, 'scripts', 'public-safety-check.mjs')
 const guidedFlowScriptPath = resolve(repositoryRoot, 'scripts', 'guided-flow-check.mjs')
+const licensePositioningScriptPath = resolve(repositoryRoot, 'scripts', 'license-positioning-check.mjs')
 
 let failed = false
 
@@ -32,6 +33,7 @@ checkFileContains(checklistPath, 'first release command requirements', [
   'npm run release:smoke',
   'npm run release:review-check',
   'npm run ci:maintenance-check',
+  'npm run license:positioning-check',
   'npm run qa:guided-flow-check',
   'npm run lint',
   'npm run build',
@@ -43,6 +45,7 @@ checkFileContains(issueTemplatePath, 'release template command coverage', [
   '`npm run release:smoke`',
   '`npm run release:prepare -- --artifact-dir <artifact-dir>`',
   '`npm run release:notes -- --artifact-dir <artifact-dir>`',
+  '`npm run license:positioning-check`',
   '`npm run qa:guided-flow-check`',
   '`npm run lint`',
   '`npm run build`',
@@ -67,7 +70,9 @@ checkFileContains(readinessPath, 'release-readiness discoverability', [
   'release:review-check',
   'release-smoke',
   'ci:maintenance-check',
+  'license:positioning-check',
   'qa:guided-flow-check',
+  'license-positioning-check.log',
   'release:evidence',
   'release:evidence:run',
   'release:evidence:cleanup',
@@ -86,6 +91,7 @@ checkFileContains(checklistPath, 'first release evidence checklist coverage', [
   'npm run release:evidence:run',
   'docs/release-dry-run-evidence.md',
   '<local-only evidence log: lint.log>',
+  '<local-only evidence log: license-positioning-check.log>',
   '<local-only evidence log: guided-flow-check.log>',
   'npm run release:public-safety-check',
   'npm run release:evidence:cleanup',
@@ -103,6 +109,7 @@ checkFileContains(checklistPath, 'evidence-log hygiene coverage', [
 checkFileContains(evidenceRunbookPath, 'runbook coverage', [
   'Release Dry-Run Evidence Index',
   'npm run lint',
+  'npm run license:positioning-check',
   'npm run qa:guided-flow-check',
   'npm run build',
   'npm run native:doctor',
@@ -128,12 +135,14 @@ checkFileContains(packageJsonPath, 'package script coverage', [
   '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
   '"release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs"',
   '"release:public-safety-check": "node scripts/public-safety-check.mjs"',
+  '"license:positioning-check": "node scripts/license-positioning-check.mjs"',
   '"qa:guided-flow-check": "node scripts/guided-flow-check.mjs"',
 ])
 
 checkFileContains(issueTemplatePath, 'release template evidence log coverage', [
   '`npm run release:evidence:cleanup`',
   '`npm run release:public-safety-check`',
+  '<local-only evidence log: license-positioning-check.log>',
   '<local-only evidence log: guided-flow-check.log>',
   '<local-only evidence log: public-safety-check.log>',
 ])
@@ -151,6 +160,11 @@ if (!existsSync(publicSafetyScriptPath)) {
 if (!existsSync(guidedFlowScriptPath)) {
   failed = true
   console.error(`[first-release-check] missing required file: ${guidedFlowScriptPath}`)
+}
+
+if (!existsSync(licensePositioningScriptPath)) {
+  failed = true
+  console.error(`[first-release-check] missing required file: ${licensePositioningScriptPath}`)
 }
 
 if (failed) {

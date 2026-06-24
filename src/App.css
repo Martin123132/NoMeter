@@ -2538,12 +2538,21 @@
   font-weight: 760;
 }
 
-.path-field span {
+.path-field label {
+  display: inline-flex;
+  align-items: center;
   gap: 6px;
 }
 
 .path-field svg {
   color: #245b9c;
+}
+
+.path-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 7px;
+  align-items: center;
 }
 
 .path-field input {
@@ -2561,6 +2570,33 @@
 .path-field input:focus {
   outline: 2px solid rgba(8, 145, 168, 0.2);
   border-color: rgba(8, 145, 168, 0.42);
+}
+
+.path-picker-button {
+  min-width: 92px;
+  height: 34px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0 9px;
+  border: 1px solid rgba(8, 145, 168, 0.28);
+  border-radius: 7px;
+  color: #0a6675;
+  background: #f2fcfd;
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.path-picker-button:hover:not(:disabled),
+.path-picker-button:focus-visible:not(:disabled) {
+  border-color: rgba(8, 145, 168, 0.44);
+  background: #e4f9fb;
+}
+
+.path-picker-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
 }
 
 .folder-actions {
@@ -2776,6 +2812,14 @@
 
   .folder-actions {
     grid-template-columns: 1fr;
+  }
+
+  .path-input-row {
+    grid-template-columns: 1fr;
+  }
+
+  .path-picker-button {
+    width: 100%;
   }
 
   .drop-actions {

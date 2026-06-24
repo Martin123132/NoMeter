@@ -33,7 +33,7 @@
     "externalBin": ["binaries/ffmpeg", "binaries/ffprobe", "binaries/pandoc", "binaries/qpdf"],
     "resources": ["binaries/*.dll"],
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.ico"],
-    "shortDescription": "No credits, no limits, no uploads",
-    "longDescription": "NoMeter converts, merges, splits, and prepares files locally without accounts, credits, limits, or uploads."
+    "shortDescription": "Free personal use, no uploads",
+    "longDescription": "NoMeter converts, merges, splits, and prepares files locally for personal and non-commercial use without uploads or usage credits."
   }
 }

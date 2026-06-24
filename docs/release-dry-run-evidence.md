@@ -1,10 +1,10 @@
 # Release Dry-Run Evidence Index
 
-Generated: 2026-06-23T17:37:34.991Z
+Generated: 2026-06-24T18:16:51.107Z
 
 Run metadata:
 - Release version: 0.5.0
-- Commit: 9507e1f4912b17065d229b0774725bbbcbccc573
+- Commit: d3d289ce666fabed9b8fb34553c34db7295fa2e3
 - Branch: main
 - Artifact directory: outputs/release
 
@@ -15,6 +15,7 @@ Run each command and record terminal output path:
 | Command | Evidence path | Result |
 | --- | --- | --- |
 | npm run lint | <local-only evidence log: lint.log> | |
+| npm run license:positioning-check | <local-only evidence log: license-positioning-check.log> | |
 | npm run qa:guided-flow-check | <local-only evidence log: guided-flow-check.log> | |
 | npm run build | <local-only evidence log: build.log> | |
 | npm run native:doctor | <local-only evidence log: native-doctor.log> | |

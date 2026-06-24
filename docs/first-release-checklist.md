@@ -20,6 +20,7 @@ Before creating a release, confirm all expected public outputs are present in th
 - `npm run release:smoke`
 - `npm run release:review-check`
 - `npm run ci:maintenance-check`
+- `npm run license:positioning-check`
 - `npm run qa:guided-flow-check`
 - `npm run lint`
 - `npm run build`
@@ -34,7 +35,7 @@ Before creating a release, confirm all expected public outputs are present in th
 - For a full local capture that runs all checks and writes logs:
   - `npm run release:evidence:run`
 - Use [`docs/release-dry-run-evidence.md`](docs/release-dry-run-evidence.md) as the capture sheet for:
-  - command output locations for lint/guided-flow/build/doctor/smoke/review checks,
+  - command output locations for lint/licence-positioning/guided-flow/build/doctor/smoke/review checks,
   - CI run URLs for `web-qa`, `release-smoke`, `release-review-guard`, `public-safety-check`, `native-doctor`, `ci-maintenance-check`, `first-release-check`,
   - and artifact presence verification (`NoMeter_<version>_x64-setup.exe`, `NoMeter_<version>_x64_en-US.msi`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`).
 
@@ -42,13 +43,14 @@ Before creating a release, confirm all expected public outputs are present in th
 
 - `outputs/release`
 - `docs/release-dry-run-evidence.md`
-- local-only evidence log labels such as `<local-only evidence log: lint.log>` and `<local-only evidence log: guided-flow-check.log>`
+- local-only evidence log labels such as `<local-only evidence log: lint.log>`, `<local-only evidence log: license-positioning-check.log>`, and `<local-only evidence log: guided-flow-check.log>`
 
 `outputs/` and `tmp/` are gitignored local generated-output folders. Do not commit installers, checksums, provenance, draft notes, or raw logs from those folders.
 
 ## Public-safe review gates (must pass)
 
 - [ ] All listed files are generated in a sanitized/public-safe artifact directory.
+- [ ] `npm run license:positioning-check` passes so README/package/docs match the non-commercial public licence and commercial-use boundary.
 - [ ] No private local filesystem paths are included in `release-notes.md`.
 - [ ] `checksums.sha256` contains entries for all generated public artifacts.
 - [ ] `release-provenance.txt` contains commit, branch, timestamp, and runtime/toolchain values.

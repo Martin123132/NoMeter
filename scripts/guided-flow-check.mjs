@@ -64,6 +64,9 @@ checkText(appText, appPath, 'native folder guardrails', [
   'isCDrivePath(workDir) || isCDrivePath(outputDir)',
   'this NoMeter workspace stays off C:.',
   'Desktop saves native outputs to this Save folder.',
+  'pickNativeFolder',
+  'chooseNativeFolder',
+  'path-picker-button',
 ])
 
 checkText(cssText, cssPath, 'responsive guided flow layout', [

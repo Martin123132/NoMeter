@@ -2,7 +2,9 @@
 
 [![CI](https://github.com/Martin123132/NoMeter/actions/workflows/ci.yml/badge.svg)](https://github.com/Martin123132/NoMeter/actions/workflows/ci.yml)
 
-NoMeter is an **open-source, local-first conversion toolbox** for browser and desktop workflows. Files stay on your machine by default; there are no uploads, no accounts, and no usage limits.
+NoMeter is a **source-available, local-first conversion toolbox** for browser and desktop workflows. It is free for personal and non-commercial use: files stay on your machine by default; there are no uploads, no accounts, and no usage credits.
+
+Commercial use requires a separate written license from TWO HANDS NETWORK LTD. That includes resale, paid products, hosted/SaaS/API services, managed services, enterprise products, commercial developer tools, commercial AI systems, and commercial AI training/evaluation pipelines.
 
 ## What this project does
 
@@ -78,7 +80,7 @@ For a public-safe release preparation pass (without publishing a release), use:
 npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 ```
 
-This runs lint + web build + native doctor, then writes provenance and checksums for release candidates (installers/static bundle) to the artifact folder.
+This runs lint + licence positioning + web build + native doctor, then writes provenance and checksums for release candidates (installers/static bundle) to the artifact folder.
 
 Generate a paste-ready release draft (without publishing):
 
@@ -111,12 +113,14 @@ Run these before PRs:
 
 ```powershell
 npm run lint
+npm run license:positioning-check
 npm run qa:guided-flow-check
 npm run build
 npm run native:doctor
 ```
 
 `native:doctor` verifies local prerequisites and emits useful warnings for optional engines not yet bundled.
+`license:positioning-check` keeps public wording aligned with the non-commercial public licence and commercial-use boundary.
 `qa:guided-flow-check` keeps the guided conversion path, mixed-file recipe switching, mobile queue cards, and native folder guardrails from drifting.
 
 ### Related scripts
@@ -126,8 +130,10 @@ npm run native:doctor
 
 ## License
 
-NoMeter is licensed under **AGPL-3.0-only**. See [`LICENSE`](LICENSE).
+NoMeter is licensed for personal and non-commercial use under the **PolyForm Noncommercial License 1.0.0**. See [`LICENSE`](LICENSE) and [`NOTICE.md`](NOTICE.md).
+
+Commercial use is not granted by the public licence. See [`COMMERCIAL-LICENSE.md`](COMMERCIAL-LICENSE.md) before bundling NoMeter into paid products, hosted services, managed services, enterprise tools, commercial AI systems, or commercial AI training/evaluation pipelines.
 
 ```text
-NoMeter mission: no credits, no limits, no uploads.
+NoMeter mission: free personal use, no uploads, no usage credits.
 ```
