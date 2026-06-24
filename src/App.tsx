@@ -1952,7 +1952,7 @@ function App() {
           <section className="route-nudge" aria-label="NoMeter guided route hint">
             <div>
               <h3>Follow the route</h3>
-              <p>You are in Guided mode. The top bar and mission lane now show your live waypoint: Source → Recipe → Run → Export.</p>
+              <p>You are in Guided mode. The top bar and mission lane now show your live waypoint: Source &gt; Recipe &gt; Run &gt; Export.</p>
             </div>
             <div className="route-nudge-actions">
               <button type="button" className="ghost-button" onClick={() => jumpToSource()}>
@@ -2007,6 +2007,24 @@ function App() {
         </section>
 
         <section className={`mission-lane mission-lane-${missionLane.tone}`} aria-label="NoMeter mission lane">
+          <div className="mission-lane-director">
+            <div className="mission-lane-director-copy">
+              <span className={`mission-lane-eyebrow mission-lane-eyebrow-${missionLane.tone}`}>
+                Director - {missionRouteSummary}
+              </span>
+              <h2>{missionLane.nextTitle}</h2>
+              <p>{missionLane.nextHint}</p>
+            </div>
+            <button
+              type="button"
+              className={`ghost-button mission-lane-primary mission-lane-primary-${missionLane.tone} ${showGuidancePulse ? 'mission-cta-flash' : ''}`}
+              onClick={missionLane.nextAction}
+              title={`Follow route: ${missionLane.nextTitle}`}
+            >
+              <Sparkles size={15} />
+              {missionLane.nextActionLabel}
+            </button>
+          </div>
           <div className="mission-lane-track">
             {missionLane.steps.map((step, index) => {
               const isActive = index === missionLane.activeIndex
@@ -2027,19 +2045,6 @@ function App() {
                 </button>
               )
             })}
-          </div>
-          <div className="mission-lane-next">
-            <p>
-              <strong>{missionLane.nextTitle}</strong> {missionLane.nextHint}
-            </p>
-            <button
-              type="button"
-              className={`ghost-button mission-lane-cta ${showGuidancePulse ? 'mission-cta-flash' : ''}`}
-              onClick={missionLane.nextAction}
-            >
-              <Sparkles size={14} />
-              {missionLane.nextActionLabel}
-            </button>
           </div>
         </section>
 

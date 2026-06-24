@@ -35,6 +35,14 @@ checkText(appText, appPath, 'four-step mission route', [
   'mission-lane',
 ])
 
+checkText(appText, appPath, 'mission director lane', [
+  'mission-lane-director',
+  'Director - {missionRouteSummary}',
+  'mission-lane-primary',
+  'Follow route: ${missionLane.nextTitle}',
+  'missionLane.nextActionLabel',
+])
+
 checkText(appText, appPath, 'run-or-review behavior', [
   'const missionCanReviewExport = missionHasExports && latestExport !== undefined',
   'const runOrFollowAction = canRunMission',
@@ -85,6 +93,8 @@ checkText(cssText, cssPath, 'responsive guided flow layout', [
   '.mission-route-radar',
   '.route-status',
   '.mission-lane',
+  '.mission-lane-director',
+  '.mission-lane-primary',
   '.mission-rail',
   '.topbar-actions',
   '@media (max-width: 760px)',
