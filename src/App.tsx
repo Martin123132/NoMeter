@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, type ChangeEvent, type DragEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type ChangeEvent, type DragEvent } from 'react'
 import {
   Archive,
   AudioWaveform,
@@ -16,6 +16,7 @@ import {
   Scissors,
   Settings2,
   ShieldCheck,
+  Sparkles,
   Trash2,
   UploadCloud,
   Video,
@@ -51,6 +52,9 @@ type ToolId = 'image-convert' | 'pdf-merge' | 'pdf-split' | 'pdf-optimize' | 'do
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
 type JobStatus = 'ready' | 'running' | 'done' | 'blocked' | 'error'
 type BannerTone = 'success' | 'warning' | 'danger'
+type GuidanceMode = 'guided' | 'explorer'
+type AtlasTone = 'focus' | 'active' | 'idle' | 'warning' | 'done'
+type MissionRailState = 'active' | 'done' | 'warning' | 'locked'
 
 type QueueJob = {
   id: string
@@ -63,6 +67,37 @@ type QueueJob = {
   progress: number
   message: string
   outputName?: string
+}
+
+type AtlasNode = {
+  id: string
+  title: string
+  detail: string
+  tone: AtlasTone
+  icon: LucideIcon
+  cta: string
+  action: () => void
+  badge?: string
+}
+
+type MissionRailStep = {
+  id: string
+  label: string
+  detail: string
+  tone: MissionRailState
+  icon: LucideIcon
+  cta: string
+  action: () => void
+  disabled?: boolean
+}
+
+type MissionWaypoint = {
+  title: string
+  hint: string
+  ctaLabel: string
+  ctaAction: () => void
+  tone: 'success' | 'info' | 'warning'
+  disabled?: boolean
 }
 
 type ExportArtifact = {
@@ -142,12 +177,56 @@ const toolOptions: ToolOption[] = [
 
 const browserImageExtensions = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'svg'])
 
+const quickStartHints: Record<ToolId, { source: string; output: string; focus: string }> = {
+  'image-convert': {
+    source: 'PNG/JPG/WebP/etc.',
+    output: 'Image formats like WebP, PNG, JPEG',
+    focus: 'Drop files, choose quality/format, then Run.',
+  },
+  'pdf-merge': {
+    source: 'Two or more PDFs',
+    output: 'A single combined PDF',
+    focus: 'Add PDFs, run merge, then download the merged file.',
+  },
+  'pdf-split': {
+    source: 'One PDF',
+    output: 'A ZIP of numbered pages',
+    focus: 'Add one PDF and run split to inspect each page package.',
+  },
+  'pdf-optimize': {
+    source: 'PDFs that need repair or compression',
+    output: 'Optimized PDF',
+    focus: 'Use the native qpdf path in desktop mode for reliable results.',
+  },
+  'document-convert': {
+    source: 'Markdown, HTML, DOCX, ODT, RTF, or text',
+    output: 'HTML, DOCX, Markdown, EPUB',
+    focus: 'Drop a document, choose format, then Run with Pandoc.',
+  },
+  'native-engine': {
+    source: 'Audio or video files',
+    output: 'MP4 H.264',
+    focus: 'Set your save folder (D: preferred), then run FFmpeg transcode.',
+  },
+}
+
+const missionStateCopy = {
+  source: 'Load source files',
+  options: 'Choose recipe + options',
+  run: 'Run conversion',
+  export: 'Collect exports',
+}
+
 const defaultNativeFolders: NativeFolders = {
   workDir: 'D:\\Codex\\OpenForge\\work',
   outputDir: 'D:\\Codex\\OpenForge\\outputs\\converted',
 }
 
 const nativeFolderStorageKey = 'nometer.nativeFolders.v1'
+const quickStartStorageKey = 'nometer.quickStart.v1'
+const guidanceModeStorageKey = 'nometer.guidanceMode.v1'
+const firstRunGuideStorageKey = 'nometer.firstRunGuide.v1'
+const guidedRouteNudgeStorageKey = 'nometer.guidedRouteNudge.v1'
 
 const statusLabels: Record<JobStatus, string> = {
   ready: 'Ready',
@@ -170,15 +249,58 @@ function App() {
   const [isDragging, setIsDragging] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [banner, setBanner] = useState<{ tone: BannerTone; text: string } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const sourceSectionRef = useRef<HTMLDivElement>(null)
+  const optionsSectionRef = useRef<HTMLDivElement>(null)
+  const exportsSectionRef = useRef<HTMLDivElement>(null)
+  const missionRailSectionRef = useRef<HTMLDivElement>(null)
+  const guidanceModeTransitionRef = useRef<GuidanceMode>('guided')
+  const runJobsRef = useRef<() => Promise<void>>(() => Promise.resolve())
+  const [showQuickStart, setShowQuickStart] = useState(() => {
+    try {
+      return localStorage.getItem(quickStartStorageKey) !== '1'
+    } catch {
+      return true
+    }
+  })
+  const [showFirstRunGuide, setShowFirstRunGuide] = useState(() => {
+    try {
+      return localStorage.getItem(firstRunGuideStorageKey) !== '1'
+    } catch {
+      return true
+    }
+  })
+  const [guidanceMode, setGuidanceMode] = useState<GuidanceMode>(() => {
+    try {
+      const savedMode = localStorage.getItem(guidanceModeStorageKey)
+      return savedMode === 'guided' || savedMode === 'explorer' ? savedMode : 'guided'
+    } catch {
+      return 'guided'
+    }
+  })
   const [nativeStatus, setNativeStatus] = useState<NativeRuntimeStatus>({
     available: false,
     label: 'Checking native bridge',
     detail: 'Inspecting the current runtime.',
   })
+  const [showShortcutHints, setShowShortcutHints] = useState(false)
+  const [showGuidancePulse, setShowGuidancePulse] = useState(false)
+  const [showGuidedRouteNudge, setShowGuidedRouteNudge] = useState(() => {
+    try {
+      return localStorage.getItem(guidedRouteNudgeStorageKey) !== '1'
+    } catch {
+      return true
+    }
+  })
 
+  const setGuidanceModePreserve = useCallback((nextMode: GuidanceMode) => {
+    setGuidanceMode((previousMode) => (previousMode === nextMode ? previousMode : nextMode))
+  }, [])
+
+  const compatibleJobs = useMemo(() => jobs.filter((job) => isCompatibleForTool(job, activeTool)), [jobs, activeTool])
   const runnableJobs = useMemo(
-    () => jobs.filter((job) => isRunnableForTool(job, activeTool)),
-    [activeTool, jobs],
+    () => compatibleJobs.filter((job) => isRunnableForTool(job, activeTool)),
+    [activeTool, compatibleJobs],
   )
 
   const queueStats = useMemo(() => {
@@ -190,6 +312,683 @@ function App() {
   }, [jobs])
 
   const nativeFolderIssue = useMemo(() => validateNativeFolders(nativeFolders), [nativeFolders])
+  const quickStartHint = quickStartHints[activeTool]
+  const shouldShowQuickStart = showQuickStart && jobs.length === 0 && exports.length === 0
+  const isGuidedMode = guidanceMode === 'guided'
+  const missionCanRun = runnableJobs.length > 0
+  const missionCompletedCount = jobs.filter((job) => job.status === 'done').length
+  const missionHasExports = exports.length > 0
+  const missionHasBlocked = jobs.some((job) => job.status === 'blocked')
+  const missionHasErrors = jobs.some((job) => job.status === 'error')
+  const missionErrorCount = jobs.filter((job) => job.status === 'error').length
+  const missionHasReadyJobs = jobs.some((job) => job.status === 'ready')
+  const missionHasRunningJobs = jobs.some((job) => job.status === 'running')
+  const missionRoundCompleted = jobs.length > 0 && !missionHasReadyJobs && !missionHasRunningJobs
+  const missionNativeUnavailable =
+    (activeTool === 'native-engine' || activeTool === 'document-convert' || activeTool === 'pdf-optimize') &&
+    !nativeStatus.available
+  const missionFolderWarning = requiresDesktopTool(activeTool) ? nativeFolderIssue : null
+
+  const missionNotice = missionHasBlocked
+    ? 'Some queued files need a native path in desktop mode for this tool.'
+    : missionNativeUnavailable
+      ? 'Enable the desktop bridge or switch to a browser-ready recipe first.'
+      : missionFolderWarning
+        ? nativeFolderIssue
+        : null
+
+  const missionHasPendingCompatible = runnableJobs.length > 0
+  const latestExport = exports[0]
+  const missionCanReviewExport = missionHasExports && latestExport !== undefined
+  const canRunMission = missionHasPendingCompatible && !isRunning && !missionNativeUnavailable && !missionFolderWarning && !missionHasBlocked
+  const missionProgress = [jobs.length > 0, compatibleJobs.length > 0, missionCompletedCount > 0, missionHasExports].filter(Boolean).length
+
+  const jumpToSource = useCallback(() => {
+    sourceSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const jumpToOptions = useCallback(() => {
+    optionsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const jumpToExports = useCallback(() => {
+    exportsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  }, [])
+
+  const suggestedTool = useMemo(() => inferMissionTool(jobs), [jobs])
+  const suggestedToolLabel = suggestedTool ? toolOptions.find((tool) => tool.id === suggestedTool)?.label : null
+
+  const applySuggestedTool = useCallback(
+    (toolId: ToolId) => {
+      setActiveTool(toolId)
+      setBanner({
+        tone: 'success',
+        text: `Switched to ${toolOptions.find((tool) => tool.id === toolId)?.label ?? 'the matching recipe'} for queued files.`,
+      })
+      jumpToOptions()
+    },
+    [jumpToOptions],
+  )
+
+  const openFilePicker = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const shouldFollowSuggestedTool =
+    suggestedTool !== null &&
+    suggestedTool !== activeTool &&
+    !missionHasBlocked &&
+    !missionNativeUnavailable &&
+    !missionFolderWarning &&
+    !isRunning
+  const canAutoRun = canRunMission || shouldFollowSuggestedTool || missionCanReviewExport
+  const canAutoRunOrSwitch = jobs.length > 0 && canAutoRun
+  const runOrFollowAction = canRunMission
+    ? runJobs
+    : shouldFollowSuggestedTool && suggestedTool
+      ? () => applySuggestedTool(suggestedTool)
+      : missionCanReviewExport
+        ? openLatestExport
+      : jobs.length > 0
+        ? jumpToSource
+        : openFilePicker
+  const runActionLabel = canRunMission
+    ? 'Run conversion'
+    : shouldFollowSuggestedTool && suggestedToolLabel
+      ? `Switch to ${suggestedToolLabel}`
+      : missionCanReviewExport
+        ? 'Open latest export'
+        : missionNotice
+          ? 'Fix requirements'
+          : missionCanRun
+            ? 'Review native readiness'
+            : 'Fix source/recipe'
+
+  const runButtonLabel = jobs.length === 0 ? 'Add files' : runActionLabel
+
+  const clearQueue = useCallback(() => {
+    setJobs([])
+    setBanner(null)
+  }, [])
+
+  function openLatestExport() {
+    if (!latestExport) return
+
+    if (typeof window !== 'undefined' && latestExport.url) {
+      window.open(latestExport.url, '_blank', 'noopener,noreferrer')
+    }
+  }
+
+  const missionActionHint = !canRunMission
+    ? missionCanReviewExport
+      ? null
+      : missionHasBlocked
+      ? 'Resolve blocked items with a native desktop recipe.'
+      : missionNativeUnavailable
+        ? 'Enable native runtime to continue with this recipe.'
+        : missionFolderWarning
+          ? missionFolderWarning
+          : jobs.length > 0
+            ? missionCanRun
+              ? 'Run conversion is blocked. Wait or check queue state.'
+              : suggestedToolLabel
+                ? `Try ${suggestedToolLabel} to match this file mix.`
+                : 'This queue has files that do not match the selected recipe.'
+      : null
+    : null
+  const runNodeDetail =
+    jobs.length === 0
+      ? 'Add files or samples'
+      : missionNotice
+        ? missionNotice
+        : missionHasBlocked
+          ? 'Native-only files in queue'
+          : missionCanReviewExport
+            ? `${exports.length} export${exports.length === 1 ? '' : 's'} ready`
+          : missionCanRun
+            ? missionHasRunningJobs
+              ? 'Conversion is running'
+              : 'Ready to run'
+            : 'Recipe mismatch'
+
+  const missionProgressPercent = Math.round((missionProgress / 4) * 100)
+  const missionObjectiveLabel = `Mission progress ${missionProgress}/4`
+
+  const worldAtlasNodes: AtlasNode[] = (() => {
+    const activeToolLabel = toolOptions.find((tool) => tool.id === activeTool)?.label ?? 'Recipe'
+    const sourceNodeDetail = jobs.length > 0 ? `${jobs.length} file${jobs.length === 1 ? '' : 's'} in queue` : 'No files yet'
+    const sourceTone: AtlasTone = jobs.length > 0 ? 'done' : 'focus'
+    const optionsTone: AtlasTone = jobs.length > 0 ? 'active' : 'idle'
+    const routeTone: AtlasTone = missionCanReviewExport ? 'done' : canRunMission ? 'focus' : jobs.length > 0 ? 'warning' : 'idle'
+    const exportTone: AtlasTone = missionHasExports ? 'done' : missionCompletedCount > 0 ? 'active' : 'idle'
+    const routeCta = runActionLabel
+    const routeAction = runOrFollowAction
+
+    return [
+      {
+        id: 'source',
+        title: 'Source dock',
+        detail: sourceNodeDetail,
+        tone: sourceTone,
+        icon: UploadCloud,
+        cta: jobs.length > 0 ? 'Open queue' : 'Add files',
+        action: jobs.length > 0 ? jumpToSource : openFilePicker,
+      },
+      {
+        id: 'recipe',
+        title: 'Recipe deck',
+        detail: `Current recipe: ${activeToolLabel}`,
+        tone: optionsTone,
+        icon: Settings2,
+        cta: compatibleJobs.length > 0 ? 'Tweak options' : 'Switch recipe',
+        action: jumpToOptions,
+      },
+      {
+        id: 'route',
+        title: 'Conversion runway',
+        detail: runNodeDetail,
+        tone: routeTone,
+        icon: Play,
+        cta: routeCta,
+        action: routeAction,
+        badge: !canRunMission && jobs.length > 0 && !missionCanReviewExport ? 'Blocked' : undefined,
+      },
+      {
+        id: 'exports',
+        title: 'Exports bay',
+        detail: missionHasExports
+          ? `${exports.length} artifact${exports.length === 1 ? '' : 's'} ready`
+          : missionCompletedCount > 0
+            ? 'Review successful outputs'
+            : 'Run conversion',
+        tone: exportTone,
+        icon: Download,
+        cta: missionHasExports ? 'Open latest' : 'Collect outputs',
+        action: missionHasExports && latestExport ? openLatestExport : jumpToExports,
+      },
+    ]
+  })()
+
+  const missionRailSteps: MissionRailStep[] = (() => {
+    const activeToolLabel = toolOptions.find((tool) => tool.id === activeTool)?.label ?? 'Recipe'
+
+    const sourceDetail = jobs.length > 0 ? `${jobs.length} file${jobs.length === 1 ? '' : 's'} in queue` : 'No files yet'
+    const sourceTone: MissionRailState = jobs.length > 0 ? 'done' : 'active'
+    const sourceCta = jobs.length > 0 ? 'Go to source' : 'Add source now'
+    const recipeDetail =
+      jobs.length > 0 ? `Current recipe: ${activeToolLabel}` : 'Choose recipe after adding source'
+    const recipeTone: MissionRailState =
+      jobs.length === 0 ? 'locked' : missionHasErrors || missionHasBlocked || missionFolderWarning || missionNativeUnavailable ? 'warning' : 'done'
+    const recipeCta = jobs.length > 0
+      ? suggestedToolLabel && missionHasErrors === false && missionHasBlocked === false && !missionFolderWarning && !missionNativeUnavailable
+        ? `Try ${suggestedToolLabel}`
+        : 'Tune recipe'
+      : 'Add source to unlock'
+    const runTone: MissionRailState = missionCompletedCount > 0
+      ? 'done'
+      : canRunMission
+      ? missionHasRunningJobs
+        ? 'done'
+        : 'active'
+      : jobs.length > 0
+        ? missionNotice
+          ? 'warning'
+          : 'locked'
+        : 'locked'
+    const runCta = missionCompletedCount > 0 ? (missionCanReviewExport ? 'Open latest' : 'Run complete') : canRunMission ? 'Run mission' : runActionLabel
+    const exportTone: MissionRailState = missionHasExports
+      ? 'done'
+      : missionCompletedCount > 0
+        ? 'active'
+        : missionHasErrors
+          ? 'warning'
+          : 'locked'
+    const exportCta = missionHasExports ? 'Open latest' : missionCompletedCount > 0 ? 'Collect outputs' : 'Finish run first'
+
+    return [
+      {
+        id: 'source',
+        label: 'Source',
+        detail: sourceDetail,
+        tone: sourceTone,
+        icon: UploadCloud,
+        cta: sourceCta,
+        action: jobs.length > 0 ? jumpToSource : openFilePicker,
+      },
+      {
+        id: 'recipe',
+        label: 'Recipe',
+        detail: recipeDetail,
+        tone: recipeTone,
+        icon: Settings2,
+        cta: recipeCta,
+        action: jobs.length > 0 ? jumpToOptions : openFilePicker,
+        disabled: jobs.length === 0,
+      },
+      {
+        id: 'run',
+        label: 'Runway',
+        detail: runNodeDetail,
+        tone: runTone,
+        icon: Play,
+        cta: runCta,
+        action: runOrFollowAction,
+        disabled: !canAutoRunOrSwitch,
+      },
+      {
+        id: 'exports',
+        label: 'Exports',
+        detail: missionHasExports
+          ? `${exports.length} artifact${exports.length === 1 ? '' : 's'} ready`
+          : missionCompletedCount > 0
+            ? 'Review successful outputs'
+            : 'Run conversion',
+        tone: exportTone,
+        icon: Download,
+        cta: exportCta,
+        action: missionHasExports && latestExport ? openLatestExport : jumpToExports,
+        disabled: jobs.length > 0 && !missionHasExports && missionCompletedCount === 0,
+      },
+    ]
+  })()
+
+  const explorerModeHint = !isGuidedMode
+    ? jobs.length === 0
+      ? 'Drop files to begin, then use the workspace freely. Guided mode gives a mission checklist whenever you want it.'
+      : missionHasBlocked
+        ? 'You have native-only files queued. Guided mode can show the exact remediation path.'
+        : missionHasErrors
+          ? 'Some files failed. Stay in Explorer to regroup, or switch to Guided for cleanup prompts.'
+          : compatibleJobs.length === 0
+            ? 'Current files do not match this recipe. Guided mode can show the quickest alignment path.'
+            : jobs.some((job) => job.status === 'running')
+              ? 'Your conversion is in progress. Keep an eye on queue states, and open Guided mode for next-step coaching after it finishes.'
+              : 'Explorer mode is active: you are fully in control. Guided mode can add a guided checklist if you want.'
+    : null
+
+  const missionCompletion = !missionRoundCompleted || missionCompletedCount === 0 || !missionHasExports
+    ? null
+    : missionHasErrors
+      ? {
+          tone: 'warning' as const,
+          title: 'Mission completed with fixes',
+          message: `You finished ${missionCompletedCount} job${missionCompletedCount === 1 ? '' : 's'}, with ${missionErrorCount} error${
+            missionErrorCount === 1 ? '' : 's'
+          }. Open exports for successful outputs, then use a quick cleanup pass for the rest.`,
+          ctaLabel: 'Review outputs',
+          ctaAction: jumpToExports,
+        }
+      : {
+          tone: 'success' as const,
+          title: 'Mission complete',
+          message: `Great run. You finished ${missionCompletedCount} job${missionCompletedCount === 1 ? '' : 's'} and reached the end of this mission.`,
+          ctaLabel: 'Open latest export',
+          ctaAction: jumpToExports,
+        }
+
+  const missionCoach = (() => {
+    if (missionCompletion) {
+      return missionCompletion
+    }
+
+    if (missionHasBlocked) {
+      return {
+        tone: 'warning' as const,
+        title: 'Mission is blocked',
+        message: 'Some queued files are native-only for this path. Use a compatible browser recipe first, or enable the native bridge for a desktop-enabled pass.',
+        ctaLabel: 'Go to source',
+        ctaAction: jumpToSource,
+      }
+    }
+
+    if (missionNativeUnavailable) {
+      return {
+        tone: 'warning' as const,
+        title: 'Native path needed',
+        message:
+          'This recipe needs native engines (FFmpeg, Pandoc, or qpdf). Open the Options panel to confirm your native mode and paths.',
+        ctaLabel: 'Review native settings',
+        ctaAction: jumpToOptions,
+      }
+    }
+
+    if (missionFolderWarning) {
+      return {
+        tone: 'warning' as const,
+        title: 'Native folders need review',
+        message: missionFolderWarning,
+        ctaLabel: 'Open native settings',
+        ctaAction: jumpToOptions,
+      }
+    }
+
+    if (!jobs.length) {
+      return {
+        tone: 'info' as const,
+        title: 'Start your mission',
+        message: `Pick source files for ${toolOptions.find((tool) => tool.id === activeTool)?.label ?? 'this recipe'} and follow the steps above.`,
+        ctaLabel: 'Pick files',
+        ctaAction: openFilePicker,
+      }
+    }
+
+    if (compatibleJobs.length === 0 && jobs.length > 0) {
+      return {
+        tone: 'warning' as const,
+        title: 'Recipe mismatch',
+        message:
+          suggestedToolLabel && suggestedTool
+            ? `This queue is a ${suggestedToolLabel.toLowerCase()} collection. Switch recipe to continue.`
+            : 'Your queued files do not match this recipe. Remove mismatch items or switch recipe.',
+        ctaLabel: suggestedTool ? `Switch to ${suggestedToolLabel}` : 'Open source queue',
+        ctaAction: suggestedTool ? () => applySuggestedTool(suggestedTool) : jumpToSource,
+      }
+    }
+
+    if (missionCompletedCount > 0 && missionHasExports) {
+      return {
+        tone: 'success' as const,
+        title: 'Output ready',
+        message: `You finished ${missionCompletedCount} job${missionCompletedCount === 1 ? '' : 's'}. Open exports now, or keep the remaining queue for another recipe.`,
+        ctaLabel: 'Open exports',
+        ctaAction: jumpToExports,
+      }
+    }
+
+    if (canRunMission) {
+      return {
+        tone: 'info' as const,
+        title: 'Ready to run',
+        message: `You're in range. Review settings, then run the conversion.`,
+        ctaLabel: 'Run conversion',
+        ctaAction: runJobs,
+      }
+    }
+
+    return {
+      tone: 'info' as const,
+      title: 'Mission in progress',
+      message: 'Need a small adjustment; follow the hint above and keep working through the four steps.',
+      ctaLabel: 'Review steps',
+      ctaAction: jumpToSource,
+    }
+  })()
+
+  const missionWaypoint: MissionWaypoint = (() => {
+    if (missionCompletion) {
+      return {
+        tone: 'success' as const,
+        title: 'All set',
+        hint: 'Your current mission is complete. Open the latest export or start a fresh round.',
+        ctaLabel: 'Open latest export',
+        ctaAction: latestExport ? openLatestExport : jumpToExports,
+      }
+    }
+
+    if (missionHasBlocked) {
+      return {
+        tone: 'warning' as const,
+        title: 'Blocked',
+        hint: 'Some queue items need desktop-only processing. Resolve with the native path or remove blockers first.',
+        ctaLabel: 'Review source queue',
+        ctaAction: jumpToSource,
+      }
+    }
+
+    if (missionNativeUnavailable) {
+      return {
+        tone: 'warning' as const,
+        title: 'Enable native mode',
+        hint: 'This path needs FFmpeg/Pandoc/qpdf. Enable or switch to a browser-ready recipe.',
+        ctaLabel: 'Open options',
+        ctaAction: jumpToOptions,
+      }
+    }
+
+    if (missionFolderWarning) {
+      return {
+        tone: 'warning' as const,
+        title: 'Path check',
+        hint: missionFolderWarning,
+        ctaLabel: 'Open native settings',
+        ctaAction: jumpToOptions,
+      }
+    }
+
+    if (jobs.length === 0) {
+      return {
+        tone: 'info' as const,
+        title: 'Start',
+        hint: 'Drop local files first, then choose a recipe that matches what you picked.',
+        ctaLabel: 'Add files now',
+        ctaAction: openFilePicker,
+      }
+    }
+
+    if (missionHasRunningJobs) {
+      return {
+        tone: 'info' as const,
+        title: 'Running',
+        hint: 'Your mission is in progress. Watch queue status and review outputs when done.',
+        ctaLabel: 'Jump to queue',
+        ctaAction: jumpToSource,
+      }
+    }
+
+    if (compatibleJobs.length === 0) {
+      return {
+        tone: 'warning' as const,
+        title: 'Recipe mismatch',
+        hint: 'Current files do not match this recipe. Switch tool or remove unsupported files.',
+        ctaLabel: suggestedTool ? `Switch to ${suggestedToolLabel}` : 'Fix source recipe',
+        ctaAction: suggestedTool ? () => applySuggestedTool(suggestedTool) : jumpToSource,
+      }
+    }
+
+    if (canRunMission) {
+      return {
+        tone: 'info' as const,
+        title: 'Ready',
+        hint: `You can run ${missionCanRun ? 'your selected recipe' : 'the mission flow'} now.`,
+        ctaLabel: 'Run conversion',
+        ctaAction: runJobs,
+      }
+    }
+
+    if (missionCompletedCount > 0 && missionHasExports) {
+      return {
+        tone: 'success' as const,
+        title: 'Review mission rewards',
+        hint: 'You have successful outputs. Open the latest export and continue with follow-up conversions if needed.',
+        ctaLabel: 'Open latest export',
+        ctaAction: latestExport ? openLatestExport : jumpToExports,
+      }
+    }
+
+    return {
+      tone: 'warning' as const,
+      title: 'Next step',
+      hint: 'One more adjustment is needed; open options, then run or collect exports.',
+      ctaLabel: 'Follow guided path',
+      ctaAction: () => setGuidanceModePreserve('guided'),
+    }
+  })()
+  const missionStatusTone: 'success' | 'info' | 'warning' = missionWaypoint.tone
+  const missionStatusCopy = missionNotice ?? missionWaypoint.hint
+
+  const missionLane = (() => {
+    const firstPendingIndex = missionRailSteps.findIndex((step) => step.tone !== 'done')
+    const activeIndex = firstPendingIndex === -1 ? missionRailSteps.length - 1 : firstPendingIndex
+
+    return {
+      activeIndex,
+      steps: missionRailSteps,
+      nextTitle: missionWaypoint.title,
+      nextHint: missionWaypoint.hint,
+      nextActionLabel: missionWaypoint.ctaLabel,
+      nextAction: missionWaypoint.ctaAction,
+      tone: missionWaypoint.tone,
+    }
+  })()
+  const missionCurrentStep = missionLane.steps[missionLane.activeIndex] ?? {
+    id: 'source',
+    label: 'Source',
+    detail: missionNotice ?? 'Ready to begin',
+    tone: 'active',
+    icon: UploadCloud,
+    cta: 'Add files',
+    action: openFilePicker,
+  }
+  const missionRouteSummary = `${missionCurrentStep.label} ${missionLane.activeIndex + 1}/4`
+  const missionCurrentStepStatusLabel = (() => {
+    switch (missionCurrentStep.tone) {
+      case 'done':
+        return 'Complete'
+      case 'warning':
+        return 'Caution'
+      case 'locked':
+        return 'Locked'
+      case 'active':
+      default:
+        return 'Current'
+    }
+  })()
+  const shouldShowFirstRunGuide = showFirstRunGuide && jobs.length === 0 && exports.length === 0
+  const shouldShowGuidedRouteNudge =
+    isGuidedMode && showGuidedRouteNudge && !shouldShowFirstRunGuide && jobs.length === 0 && exports.length === 0
+  const missionMapActiveIndex = missionLane.activeIndex
+
+  useEffect(() => {
+    const isFormTarget = (target: EventTarget | null) => {
+      if (!(target instanceof HTMLElement)) {
+        return false
+      }
+
+      if (target.isContentEditable) {
+        return true
+      }
+
+      const tag = target.tagName.toLowerCase()
+      return tag === 'input' || tag === 'textarea' || tag === 'select'
+    }
+
+    const handleGlobalKeydown = (event: KeyboardEvent) => {
+      if (event.defaultPrevented || isFormTarget(event.target)) {
+        return
+      }
+
+      if (event.key === 'F1' || event.key === '?') {
+        event.preventDefault()
+        setShowShortcutHints((current) => !current)
+        return
+      }
+
+      const hasPlatformModifier = event.metaKey || event.ctrlKey
+      if (!hasPlatformModifier) return
+
+      const key = event.key.toLowerCase()
+      if (key === 'o' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        openFilePicker()
+        return
+      }
+
+      if (key === '1' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        jumpToSource()
+        return
+      }
+
+      if (key === '2' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        jumpToOptions()
+        return
+      }
+
+      if (key === '3' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        if (jobs.length > 0) {
+          if (canRunMission) {
+            runJobsRef.current?.()
+          } else if (shouldFollowSuggestedTool && suggestedTool) {
+            applySuggestedTool(suggestedTool)
+          } else {
+            jumpToSource()
+          }
+        } else {
+          openFilePicker()
+        }
+        return
+      }
+
+      if (key === '4' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        jumpToExports()
+        return
+      }
+
+      if (event.key === 'Enter' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        if (jobs.length > 0) {
+          if (canRunMission) {
+            runJobsRef.current?.()
+          } else if (shouldFollowSuggestedTool && suggestedTool) {
+            applySuggestedTool(suggestedTool)
+          } else {
+            jumpToSource()
+          }
+        } else {
+          openFilePicker()
+        }
+        return
+      }
+
+      if (key === 'g' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        setGuidanceModePreserve('guided')
+        return
+      }
+
+      if (key === 'e' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        setGuidanceModePreserve('explorer')
+        return
+      }
+
+      if (key === 'k' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        setShowShortcutHints((current) => !current)
+        return
+      }
+
+      if (key === 'l' && !event.shiftKey && !event.altKey) {
+        event.preventDefault()
+        if (!isRunning && jobs.length > 0) {
+          clearQueue()
+          setBanner({ tone: 'success', text: 'Queue cleared.' })
+        }
+      }
+    }
+
+    window.addEventListener('keydown', handleGlobalKeydown)
+    return () => {
+      window.removeEventListener('keydown', handleGlobalKeydown)
+    }
+  }, [
+    clearQueue,
+    openFilePicker,
+    jumpToSource,
+    jumpToOptions,
+    jumpToExports,
+    applySuggestedTool,
+    setGuidanceModePreserve,
+    jobs.length,
+    isRunning,
+    canRunMission,
+    shouldFollowSuggestedTool,
+    suggestedTool,
+    setBanner,
+  ])
 
   useEffect(() => {
     let active = true
@@ -213,6 +1012,94 @@ function App() {
     }
   }, [nativeFolders])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(guidanceModeStorageKey, guidanceMode)
+    } catch {
+      // Optional local storage only.
+    }
+  }, [guidanceMode])
+
+  useEffect(() => {
+    const previousGuidanceMode = guidanceModeTransitionRef.current
+    let pulseTimer: number | null = null
+
+    if (
+      guidanceMode === 'guided' &&
+      previousGuidanceMode === 'explorer' &&
+      missionRailSectionRef.current
+    ) {
+      missionRailSectionRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setShowGuidancePulse(true)
+      pulseTimer = window.setTimeout(() => {
+        setShowGuidancePulse(false)
+      }, 900)
+    }
+
+    guidanceModeTransitionRef.current = guidanceMode
+
+    return () => {
+      if (pulseTimer !== null) {
+        window.clearTimeout(pulseTimer)
+      }
+    }
+  }, [guidanceMode])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(firstRunGuideStorageKey, showFirstRunGuide ? '0' : '1')
+    } catch {
+      // Optional local storage only.
+    }
+  }, [showFirstRunGuide])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(guidedRouteNudgeStorageKey, showGuidedRouteNudge ? '0' : '1')
+    } catch {
+      // Optional local storage only.
+    }
+  }, [showGuidedRouteNudge])
+
+  const hideQuickStart = useCallback(() => {
+    try {
+      localStorage.setItem(quickStartStorageKey, '1')
+    } catch {
+      // Optional local storage only.
+    }
+    setShowQuickStart(false)
+  }, [])
+
+  const hideFirstRunGuide = useCallback(() => {
+    setShowFirstRunGuide(false)
+  }, [])
+
+  const hideGuidedRouteNudge = useCallback(() => {
+    try {
+      localStorage.setItem(guidedRouteNudgeStorageKey, '1')
+    } catch {
+      // Optional local storage only.
+    }
+    setShowGuidedRouteNudge(false)
+  }, [])
+
+  const enableGuidedPath = useCallback(() => {
+    setGuidanceModePreserve('guided')
+    setShowFirstRunGuide(false)
+    setShowQuickStart(true)
+    setShowGuidedRouteNudge(false)
+  }, [setGuidanceModePreserve])
+
+  const enableExplorerPath = useCallback(() => {
+    setGuidanceModePreserve('explorer')
+    setShowFirstRunGuide(false)
+    setShowQuickStart(true)
+  }, [setGuidanceModePreserve])
+
+  const openQuickStart = useCallback(() => {
+    setShowQuickStart(true)
+  }, [])
+
   const addFiles = useCallback(
     (fileList: FileList | File[]) => {
       const incoming = Array.from(fileList)
@@ -221,12 +1108,15 @@ function App() {
 
       const nextJobs = incoming.map(createJob)
       setJobs((current) => [...nextJobs, ...current])
+      setShowGuidedRouteNudge(false)
+      setShowFirstRunGuide(false)
       setBanner({
         tone: 'success',
         text: `${incoming.length} file${incoming.length === 1 ? '' : 's'} added to the local queue.`,
       })
+      hideQuickStart()
     },
-    [],
+    [hideQuickStart],
   )
 
   const handleFileInput = (event: ChangeEvent<HTMLInputElement>) => {
@@ -241,8 +1131,11 @@ function App() {
       includeDocument: activeTool === 'document-convert',
       includeMedia: activeTool === 'native-engine',
     })
+    setShowGuidedRouteNudge(false)
+    setShowFirstRunGuide(false)
+    hideQuickStart()
     addFiles(sampleFiles)
-  }, [activeTool, addFiles])
+  }, [activeTool, addFiles, hideQuickStart])
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -264,20 +1157,14 @@ function App() {
     setJobs((current) => current.filter((job) => job.id !== id))
   }
 
-  const clearQueue = () => {
-    setJobs([])
-    setBanner(null)
-  }
-
   const clearExports = () => {
     exports.forEach((artifact) => URL.revokeObjectURL(artifact.url))
     setExports([])
   }
 
-  const runJobs = async () => {
+  async function runJobs() {
     if (isRunning) return
-
-    const compatibleJobs = jobs.filter((job) => isRunnableForTool(job, activeTool))
+    hideQuickStart()
 
     if (activeTool === 'native-engine' && !nativeStatus.available) {
       setBanner({
@@ -311,19 +1198,21 @@ function App() {
       return
     }
 
-    if (compatibleJobs.length === 0) {
+    if (runnableJobs.length === 0) {
       setBanner({
         tone: 'warning',
         text:
-          activeTool === 'image-convert'
-            ? 'Add PNG, JPG, WebP, GIF, BMP, or SVG files before running image conversion.'
-            : activeTool === 'native-engine'
-              ? 'Add one or more audio or video files before running FFmpeg conversion.'
-              : activeTool === 'document-convert'
-                ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
-                : activeTool === 'pdf-optimize'
-                  ? 'Add one or more PDF files before running qpdf optimization.'
-                  : 'Add one or more PDF files before running this PDF job.',
+          compatibleJobs.length > 0
+            ? 'All matching files already have an output or are waiting for review.'
+            : activeTool === 'image-convert'
+              ? 'Add PNG, JPG, WebP, GIF, BMP, or SVG files before running image conversion.'
+              : activeTool === 'native-engine'
+                ? 'Add one or more audio or video files before running FFmpeg conversion.'
+                : activeTool === 'document-convert'
+                  ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
+                  : activeTool === 'pdf-optimize'
+                    ? 'Add one or more PDF files before running qpdf optimization.'
+                    : 'Add one or more PDF files before running this PDF job.',
       })
       return
     }
@@ -333,32 +1222,34 @@ function App() {
 
     try {
       if (activeTool === 'image-convert') {
-        await runImageJobs(compatibleJobs)
+        await runImageJobs(runnableJobs)
       }
 
       if (activeTool === 'pdf-merge') {
-        await runPdfMerge(compatibleJobs)
+        await runPdfMerge(runnableJobs)
       }
 
       if (activeTool === 'pdf-split') {
-        await runPdfSplit(compatibleJobs)
+        await runPdfSplit(runnableJobs)
       }
 
       if (activeTool === 'pdf-optimize') {
-        await runPdfOptimize(compatibleJobs)
+        await runPdfOptimize(runnableJobs)
       }
 
       if (activeTool === 'native-engine') {
-        await runNativeMediaJobs(compatibleJobs)
+        await runNativeMediaJobs(runnableJobs)
       }
 
       if (activeTool === 'document-convert') {
-        await runDocumentJobs(compatibleJobs)
+        await runDocumentJobs(runnableJobs)
       }
     } finally {
       setIsRunning(false)
     }
   }
+
+  runJobsRef.current = runJobs
 
   const runImageJobs = async (compatibleJobs: QueueJob[]) => {
     let completed = 0
@@ -638,6 +1529,44 @@ function App() {
             <strong>No limits. No uploads.</strong>
           </div>
         </div>
+
+        <section className="sidebar-map" aria-label="NoMeter mission map">
+          <div className="section-header compact">
+            <h2>Mission map</h2>
+            <span className="sidebar-map-badge">{missionProgress}/4</span>
+          </div>
+          <p>Jump to any point in the flow without leaving the workspace.</p>
+          <div className="sidebar-map-list">
+            {missionRailSteps.map((step, index) => {
+              const Icon = step.icon
+              const isDone = step.tone === 'done'
+              const isActive = missionMapActiveIndex === index
+              const isLocked = step.tone === 'locked'
+              return (
+                <button
+                  key={`sidebar-${step.id}`}
+                  type="button"
+                  className={`sidebar-map-node sidebar-map-node-${step.tone} ${isActive ? 'sidebar-map-node-current' : ''} ${isActive && !isDone ? 'sidebar-map-node-next' : ''}`}
+                  onClick={step.action}
+                  disabled={isLocked}
+                  title={step.detail}
+                >
+                  <span className={`sidebar-map-index sidebar-map-index-${isDone ? 'done' : isActive ? 'active' : isLocked ? 'locked' : 'pending'}`}>
+                    {index + 1}
+                  </span>
+                  <span className="sidebar-map-copy">
+                    <strong>{step.label}</strong>
+                    <small>{step.cta}</small>
+                  </span>
+                  {isActive && !isDone ? <span className="sidebar-map-next">next</span> : null}
+                  <Icon size={12} />
+                  {step.tone === 'done' ? <CheckCircle2 size={12} className="sidebar-map-check" /> : null}
+                  {isLocked && <LockKeyhole size={12} className="sidebar-map-lock" />}
+                </button>
+              )
+            })}
+          </div>
+        </section>
       </aside>
 
       <main className="workspace">
@@ -647,22 +1576,654 @@ function App() {
             <p>{toolOptions.find((tool) => tool.id === activeTool)?.detail}</p>
           </div>
           <div className="topbar-actions">
-            <span className="local-pill">
-              <LockKeyhole size={15} />
-              Files stay local
-            </span>
-            <button type="button" className="ghost-button" onClick={clearQueue} disabled={jobs.length === 0}>
-              <Trash2 size={16} />
-              Clear
+            <div className={`path-strip path-strip-${missionWaypoint.tone}`} title={missionWaypoint.hint}>
+              <span className="path-strip-label">Next move</span>
+              <button
+                type="button"
+                className="path-strip-cta"
+                onClick={missionWaypoint.ctaAction}
+                title={`${missionWaypoint.title} - ${missionWaypoint.hint}`}
+              >
+                <Sparkles size={12} />
+                {missionWaypoint.ctaLabel}
+              </button>
+              <span className="path-strip-title">{missionWaypoint.title}</span>
+            </div>
+            <div className={`route-status route-status-${missionStatusTone}`} role="status" aria-live="polite">
+              <span className={`route-status-dot route-status-dot-${missionStatusTone}`} />
+              <span className="route-status-copy">{missionStatusCopy}</span>
+            </div>
+            <div className="mission-route-radar" aria-label="NoMeter mission route radar">
+              {missionLane.steps.map((step, index) => {
+                const isActive = index === missionLane.activeIndex
+                const isDone = step.tone === 'done'
+                const routeHint =
+                  index === 0
+                    ? 'Collect source files before anything else.'
+                    : index === 1
+                      ? 'Tune recipe and options for your source.'
+                      : index === 2
+                        ? runActionLabel
+                        : missionHasExports
+                          ? 'Export files are ready for review.'
+                          : missionCompletedCount > 0
+                            ? 'Collect successful outputs next.'
+                            : 'Finish conversion to unlock exports.'
+                return (
+                  <div className="mission-route-radar-row" key={`topbar-route-${step.id}`}>
+                    <button
+                      type="button"
+                      className={`mission-route-dot mission-route-dot-${step.tone} ${isActive ? 'mission-route-dot-active' : ''} ${
+                        isActive ? 'mission-route-dot-pulse' : ''
+                      }`}
+                      onClick={step.action}
+                      disabled={step.disabled}
+                      title={`${step.label}: ${step.cta} - ${routeHint}`}
+                    >
+                      <span className="sr-only">{step.label}: {step.cta}</span>
+                      <span aria-hidden="true">{step.label.substring(0, 1)}</span>
+                    </button>
+                    {index < missionLane.steps.length - 1 ? (
+                      <span
+                        className={`mission-route-link mission-route-link-${isDone ? 'done' : isActive ? 'active' : 'pending'}`}
+                        aria-hidden="true"
+                      />
+                    ) : null}
+                  </div>
+                )
+              })}
+            </div>
+            <div className={`mission-location-strip mission-location-strip-${missionWaypoint.tone}`} title={missionCurrentStep.detail}>
+              <span className="mission-location-label">You are here</span>
+              <div className="mission-location-copy">
+                <strong>{missionCurrentStep.label}</strong>
+                <small>{missionRouteSummary}</small>
+              </div>
+              <span className={`mission-location-mini mission-location-mini-${missionCurrentStep.tone}`}>
+                {missionCurrentStepStatusLabel}
+              </span>
+              <button
+                type="button"
+                className={`mission-location-cta mission-location-cta-${missionWaypoint.tone} ghost-button`}
+                onClick={missionLane.nextAction}
+                title={`Follow route: ${missionLane.nextTitle}`}
+              >
+                <Sparkles size={12} />
+                {missionLane.nextActionLabel}
+              </button>
+            </div>
+            <div className={`mission-beacon mission-beacon-${missionLane.tone}`} title={missionLane.nextHint}>
+              <span className="mission-beacon-label">Next stop</span>
+              <button
+                type="button"
+                className="mission-beacon-action"
+                onClick={missionLane.nextAction}
+                title={`${missionLane.nextTitle} - ${missionLane.nextHint}`}
+              >
+                <Sparkles size={12} />
+                <span>{missionLane.nextActionLabel}</span>
+              </button>
+            </div>
+            <button
+              type="button"
+              className="ghost-button shortcut-toggle"
+              onClick={() => setShowShortcutHints((current) => !current)}
+              title="Open shortcut map (Ctrl/Cmd + K)"
+            >
+              <Sparkles size={14} />
+              Shortcuts
             </button>
+            <div className={`mode-control ${showGuidancePulse ? 'mode-control-flash' : ''}`} role="tablist" aria-label="NoMeter guidance mode">
+              <span className="mode-control-label">Guidance</span>
+              <div className="segmented-control mode-toggle">
+                <button
+                  type="button"
+                  className={isGuidedMode ? 'active' : ''}
+                  onClick={() => setGuidanceModePreserve('guided')}
+                  aria-label="Guided mode"
+                  role="tab"
+                  aria-selected={isGuidedMode}
+                >
+                  Guided
+                </button>
+                <button
+                  type="button"
+                  className={isGuidedMode ? '' : 'active'}
+                  onClick={() => setGuidanceModePreserve('explorer')}
+                  aria-label="Explorer mode"
+                  role="tab"
+                  aria-selected={!isGuidedMode}
+                >
+                  Explorer
+                </button>
+              </div>
+            </div>
           </div>
+          <span className="local-pill">
+            <LockKeyhole size={15} />
+            Files stay local
+          </span>
+          <button type="button" className="ghost-button" onClick={clearQueue} disabled={jobs.length === 0}>
+            <Trash2 size={16} />
+            Clear
+          </button>
         </header>
 
+        {showShortcutHints ? (
+          <section className="shortcut-hud" aria-label="NoMeter command map">
+            <div className="shortcut-hud-head">
+              <div>
+                <h2>NoMeter command map</h2>
+                <p>Use these for fast mission control.</p>
+              </div>
+              <button
+                type="button"
+                className="ghost-button mission-coach-cta"
+                onClick={() => setShowShortcutHints(false)}
+              >
+                Hide
+              </button>
+            </div>
+            <div className="shortcut-hud-grid">
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Add files</strong>
+                  <small>Open queue</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>O</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Mission route: source</strong>
+                  <small>Open source step</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>1</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Mission route: recipe</strong>
+                  <small>Open recipe step</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>2</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Run mission</strong>
+                  <small>Run or follow suggested tool</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>Enter</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Mission route: run</strong>
+                  <small>Jump to mission action</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>3</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Mission route: exports</strong>
+                  <small>Open exports panel</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>4</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Guided mode</strong>
+                  <small>Turn guidance on</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>G</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Explorer mode</strong>
+                  <small>Turn guidance off</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>E</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Clear queue</strong>
+                  <small>Drop queued files</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>Cmd</kbd>/<kbd>Ctrl</kbd> + <kbd>L</kbd>
+                </span>
+              </div>
+              <div className="shortcut-chip">
+                <div>
+                  <strong>Show shortcuts</strong>
+                  <small>Open/close this panel</small>
+                </div>
+                <span className="shortcut-kbd">
+                  <kbd>?</kbd> / <kbd>F1</kbd>
+                </span>
+              </div>
+            </div>
+          </section>
+        ) : null}
+
         {banner ? <div className={`banner ${banner.tone}`}>{banner.text}</div> : null}
+
+        {shouldShowFirstRunGuide ? (
+          <section className="first-run-guide" aria-label="NoMeter first run guidance">
+            <div className="first-run-intro">
+              <h2>Welcome to NoMeter</h2>
+              <p>Choose your style: guided for a warm path, or explorer for open-world freedom.</p>
+            </div>
+            <div className="first-run-paths">
+              <button type="button" className="ghost-button" onClick={enableGuidedPath}>
+                <Workflow size={14} />
+                Guided path
+              </button>
+              <button type="button" className="ghost-button" onClick={enableExplorerPath}>
+                <Sparkles size={14} />
+                Explorer path
+              </button>
+              <button type="button" className="ghost-button" onClick={openFilePicker}>
+                <UploadCloud size={14} />
+                Add files
+              </button>
+              <button type="button" className="ghost-button" onClick={loadSampleFiles}>
+                <CheckCircle2 size={14} />
+                Try sample files
+              </button>
+            </div>
+            <button type="button" className="first-run-dismiss" onClick={hideFirstRunGuide}>
+              Continue without guide
+            </button>
+          </section>
+        ) : null}
+
+        {shouldShowGuidedRouteNudge ? (
+          <section className="route-nudge" aria-label="NoMeter guided route hint">
+            <div>
+              <h3>Follow the route</h3>
+              <p>You are in Guided mode. The top bar and mission lane now show your live waypoint: Source → Recipe → Run → Export.</p>
+            </div>
+            <div className="route-nudge-actions">
+              <button type="button" className="ghost-button" onClick={() => jumpToSource()}>
+                <Sparkles size={14} />
+                Open mission rail
+              </button>
+              <button type="button" className="ghost-button" onClick={hideGuidedRouteNudge}>
+                <Workflow size={14} />
+                Got it
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        <section ref={missionRailSectionRef} className="mission-rail" aria-label="NoMeter mission rail">
+          <div className="mission-rail-head">
+            <h2>Mission rail</h2>
+            <p>Open-world control: follow the path when you want guidance.</p>
+          </div>
+          <div className="mission-rail-progress-wrap" aria-label="NoMeter mission progress">
+            <span>{missionObjectiveLabel}</span>
+            <div className="mission-rail-progress-track">
+              <span className="mission-rail-progress-fill" style={{ width: `${missionProgressPercent}%` }} />
+            </div>
+          </div>
+          <div className="mission-rail-grid">
+            {missionRailSteps.map((step, index) => {
+              const Icon = step.icon
+              return (
+                <div className="mission-rail-unit" key={step.id}>
+                  <button
+                    type="button"
+                    className={`mission-rail-node mission-rail-node-${step.tone}`}
+                    onClick={step.action}
+                    disabled={step.disabled}
+                    title={step.detail}
+                  >
+                    <span className="mission-rail-icon">
+                      <Icon size={14} />
+                    </span>
+                    <span className="mission-rail-copy">
+                      <strong>{step.label}</strong>
+                      <small>{step.detail}</small>
+                      <span className="mission-rail-cta">{step.cta}</span>
+                    </span>
+                  </button>
+                  {index < missionRailSteps.length - 1 ? <span className="mission-rail-chevron" aria-hidden="true" /> : null}
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className={`mission-lane mission-lane-${missionLane.tone}`} aria-label="NoMeter mission lane">
+          <div className="mission-lane-track">
+            {missionLane.steps.map((step, index) => {
+              const isActive = index === missionLane.activeIndex
+              return (
+                <button
+                  type="button"
+                  key={step.id}
+                  className={`mission-lane-node mission-lane-node-${step.tone} ${isActive ? 'mission-lane-node-current' : ''}`}
+                  onClick={step.action}
+                  disabled={step.disabled}
+                  title={step.detail}
+                >
+                  <span className="mission-lane-index">{index + 1}</span>
+                  <span className="mission-lane-node-copy">
+                    <strong>{step.label}</strong>
+                    <small>{step.cta}</small>
+                  </span>
+                </button>
+              )
+            })}
+          </div>
+          <div className="mission-lane-next">
+            <p>
+              <strong>{missionLane.nextTitle}</strong> {missionLane.nextHint}
+            </p>
+            <button
+              type="button"
+              className={`ghost-button mission-lane-cta ${showGuidancePulse ? 'mission-cta-flash' : ''}`}
+              onClick={missionLane.nextAction}
+            >
+              <Sparkles size={14} />
+              {missionLane.nextActionLabel}
+            </button>
+          </div>
+        </section>
+
+        {isGuidedMode ? (
+          <section className="mission-strip" aria-label="NoMeter mission path">
+          <div className="mission-head">
+            <div>
+              <h2>Mission path</h2>
+              <p>Follow the path to get outputs into your chosen folder.</p>
+            </div>
+            <span className="mission-note">
+              {missionNotice ?? `Mission progress ${missionProgress}/4`}
+            </span>
+          </div>
+          <div className="mission-steps">
+            <button
+              type="button"
+              className={`mission-step mission-step-link ${jobs.length > 0 ? 'done' : 'active'}`}
+              onClick={jobs.length > 0 ? jumpToSource : openFilePicker}
+            >
+              <UploadCloud size={13} />
+              <span>{missionStateCopy.source}</span>
+              <span className="mission-step-action">{jobs.length > 0 ? 'Go to source area' : 'Pick files now'}</span>
+            </button>
+            <button
+              type="button"
+              className={`mission-step mission-step-link ${jobs.length > 0 ? 'active' : 'pending'}`}
+              onClick={jobs.length > 0 ? jumpToOptions : openFilePicker}
+            >
+              <Settings2 size={13} />
+              <span>{missionStateCopy.options}</span>
+              <span className="mission-step-action">Tune settings</span>
+            </button>
+              <button
+                type="button"
+                className={`mission-step mission-step-link ${
+                  missionCanRun ? (missionHasExports || missionCompletedCount > 0 ? 'done' : 'active') : jobs.length > 0 ? 'active' : 'pending'
+                }`}
+                onClick={jobs.length > 0 ? runOrFollowAction : openFilePicker}
+                disabled={jobs.length === 0 || !canAutoRunOrSwitch}
+              >
+                <Play size={13} />
+                <span>{missionStateCopy.run}</span>
+                <span className="mission-step-action">{jobs.length > 0 ? runActionLabel : 'Add matching files first'}</span>
+              </button>
+            <button
+              type="button"
+              className={`mission-step mission-step-link ${missionHasExports ? 'done' : missionCompletedCount > 0 ? 'active' : 'pending'}`}
+              onClick={missionHasExports && latestExport ? openLatestExport : jumpToExports}
+              disabled={jobs.length === 0 || !missionHasExports}
+            >
+              <Download size={13} />
+              <span>{missionStateCopy.export}</span>
+              <span className="mission-step-action">
+                {missionHasExports ? 'Open latest export' : 'Run conversion first'}
+              </span>
+            </button>
+          </div>
+          <div className="mission-actions">
+            {jobs.length === 0 ? (
+              <>
+                <button type="button" className="ghost-button" onClick={openFilePicker}>
+                  <UploadCloud size={16} />
+                  Add files
+                </button>
+                <button type="button" className="ghost-button" onClick={loadSampleFiles}>
+                  <CheckCircle2 size={16} />
+                  Try sample files
+                </button>
+                {!showQuickStart ? (
+                  <button type="button" className="ghost-button" onClick={openQuickStart}>
+                    <Workflow size={16} />
+                    Open quickstart
+                  </button>
+                ) : null}
+                {missionActionHint ? <span className="mission-hint">{missionActionHint}</span> : null}
+              </>
+            ) : (
+                <>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={runOrFollowAction}
+                    disabled={jobs.length === 0 || !canAutoRunOrSwitch}
+                  >
+                    <Play size={16} />
+                    {runActionLabel}
+                  </button>
+                  {missionActionHint ? <span className="mission-hint">{missionActionHint}</span> : null}
+                  {latestExport ? (
+                    <button type="button" className="ghost-button" onClick={openLatestExport}>
+                      <Download size={16} />
+                      Open latest export
+                    </button>
+                  ) : null}
+                </>
+              )}
+          </div>
+
+          <div className={`mission-coach mission-coach-${missionCoach.tone}`}>
+            <div className="mission-coach-row">
+              <div>
+                <h3>{missionCoach.title}</h3>
+                <p>{missionCoach.message}</p>
+              </div>
+              <button type="button" className="ghost-button mission-coach-cta" onClick={missionCoach.ctaAction}>
+                <Workflow size={14} />
+                {missionCoach.ctaLabel}
+              </button>
+            </div>
+            {missionActionHint ? <span className="mission-hint mission-hint-inline">{missionActionHint}</span> : null}
+          </div>
+
+          {missionCompletion ? (
+            <div className={`mission-complete mission-complete-${missionCompletion.tone}`}>
+              <div className="mission-complete-row">
+                <div>
+                  <h3>
+                    <Sparkles size={14} />
+                    {missionCompletion.title}
+                  </h3>
+                  <p>{missionCompletion.message}</p>
+                  <p className="mission-complete-subtle">{latestExport ? 'Tip: open latest export to review final output.' : ''}</p>
+                </div>
+                <div className="mission-complete-actions">
+                  {latestExport ? (
+                    <button type="button" className="ghost-button mission-coach-cta" onClick={openLatestExport}>
+                      <Download size={14} />
+                      Open latest export
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="ghost-button mission-coach-cta"
+                    onClick={() => {
+                      setJobs([])
+                      setBanner({
+                        tone: 'success',
+                        text: 'Ready for a fresh mission. Add more files when you are.',
+                      })
+                    }}
+                  >
+                    <Workflow size={14} />
+                    Start another mission
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+          </section>
+        ) : (
+          <section className="mode-hint-banner" aria-label="NoMeter explorer mode">
+            <div>
+              <p className="mode-hint-title">Explorer mode is active.</p>
+              <p className="mode-hint-copy">{explorerModeHint}</p>
+            </div>
+            <div className="mode-hint-actions">
+              <button type="button" className="ghost-button" onClick={openFilePicker}>
+                <UploadCloud size={14} />
+                Add files
+              </button>
+              <button type="button" className="ghost-button" onClick={loadSampleFiles}>
+                <CheckCircle2 size={14} />
+                Samples
+              </button>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setGuidanceModePreserve('guided')}
+              >
+                <Workflow size={14} />
+                Turn on Guided mode
+              </button>
+            </div>
+          </section>
+        )}
+
+        {!isGuidedMode ? (
+          <section className={`mission-waypoint mission-waypoint-${missionWaypoint.tone}`} aria-label="NoMeter next waypoint">
+            <div className="mission-waypoint-text">
+              <h2>{missionWaypoint.title}</h2>
+              <p>{missionWaypoint.hint}</p>
+            </div>
+            <button type="button" className="ghost-button mission-waypoint-cta" onClick={missionWaypoint.ctaAction}>
+              <Sparkles size={14} />
+              {missionWaypoint.ctaLabel}
+            </button>
+          </section>
+        ) : null}
+
+        {!isGuidedMode ? (
+          <section className="world-atlas" aria-label="NoMeter exploration atlas">
+            <div className="section-header section-header-atlas">
+              <div>
+                <h2>Studio atlas</h2>
+                <p>Jump anywhere, keep your way in view.</p>
+              </div>
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => setGuidanceModePreserve('guided')}
+              >
+                <Workflow size={14} />
+                Follow guided path
+              </button>
+            </div>
+            <div className="world-atlas-grid">
+              {worldAtlasNodes.map((node) => {
+                const Icon = node.icon
+                return (
+                  <button
+                    key={node.id}
+                    type="button"
+                    className={`world-atlas-node world-atlas-node-${node.tone}`}
+                    onClick={node.action}
+                    title={node.detail}
+                  >
+                    <span className="world-atlas-node-row">
+                      <span className="world-atlas-node-icon">
+                        <Icon size={14} />
+                      </span>
+                      <span>
+                        <strong>{node.title}</strong>
+                        <small>{node.detail}</small>
+                      </span>
+                    </span>
+                    <span className="world-atlas-node-cta">
+                      {node.badge ? <span className="world-atlas-badge">{node.badge}</span> : null}
+                      {node.cta}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </section>
+        ) : null}
+
+        {isGuidedMode && shouldShowQuickStart ? (
+          <section className="quickstart-card" aria-label="NoMeter guided quickstart">
+            <div className="section-header">
+              <div>
+                <h2>Guided quickstart</h2>
+                <p>Try one round: files, then options, then run, then export, in that order.</p>
+              </div>
+              <button
+                type="button"
+                className="quickstart-dismiss icon-button"
+                onClick={hideQuickStart}
+                aria-label="Hide quickstart"
+                title="Hide quickstart"
+              >
+                <XCircle size={14} />
+              </button>
+            </div>
+            <ol className="quickstart-steps">
+              <li>
+                Add <span>{quickStartHint.source}</span> and make sure it matches the selected tool.
+              </li>
+              <li>
+                Use <strong>{quickStartHint.output}</strong>. {quickStartHint.focus}
+              </li>
+              <li>Press Run to process the queue and generate new export rows.</li>
+              <li>Download and copy outputs, noting the saved path for desktop-native jobs.</li>
+            </ol>
+            <div className="quickstart-actions">
+              <button type="button" className="ghost-button" onClick={loadSampleFiles}>
+                <UploadCloud size={16} />
+                Try sample files
+              </button>
+              <button type="button" className="ghost-button" onClick={hideQuickStart}>
+                <CheckCircle2 size={16} />
+                Got it
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <div className="workbench-grid">
           <div className="primary-column">
             <section
+              ref={sourceSectionRef}
               className={isDragging ? 'drop-zone dragging' : 'drop-zone'}
               onDrop={handleDrop}
               onDragLeave={() => setIsDragging(false)}
@@ -682,6 +2243,7 @@ function App() {
                   <UploadCloud size={17} />
                   Add files
                   <input
+                    ref={fileInputRef}
                     type="file"
                     multiple
                     onChange={handleFileInput}
@@ -705,16 +2267,16 @@ function App() {
               <div className="section-header">
                 <div>
                   <h2>Job queue</h2>
-                  <p>{runnableJobs.length} compatible with the selected recipe</p>
+                  <p>{runnableJobs.length} ready to run with the selected recipe</p>
                 </div>
                 <button
                   type="button"
                   className="run-button"
-                  onClick={runJobs}
-                  disabled={isRunning || jobs.length === 0}
+                  onClick={runOrFollowAction}
+                  disabled={isRunning}
                 >
                   <Play size={17} fill="currentColor" />
-                  Run
+                  {runButtonLabel}
                 </button>
               </div>
 
@@ -745,7 +2307,7 @@ function App() {
               </div>
             </section>
 
-            <section className="exports-panel">
+            <section ref={exportsSectionRef} className="exports-panel">
               <div className="section-header">
                 <div>
                   <h2>Exports</h2>
@@ -787,23 +2349,25 @@ function App() {
             </section>
           </div>
 
-          <aside className="options-panel" aria-label="Conversion options">
+          <aside ref={optionsSectionRef} className="options-panel" aria-label="Conversion options">
             <section className="option-section">
               <h2>Recipe</h2>
               <div className="tool-list">
                 {toolOptions.map((tool) => {
                   const Icon = tool.icon
+                  const isSuggested = suggestedTool === tool.id && activeTool !== tool.id
                   return (
                     <button
                       type="button"
                       key={tool.id}
-                      className={activeTool === tool.id ? 'tool-button active' : 'tool-button'}
+                      className={`tool-button ${activeTool === tool.id ? 'active' : ''} ${isSuggested ? 'tool-button-suggested' : ''}`}
                       onClick={() => setActiveTool(tool.id)}
                     >
                       <Icon size={18} />
                       <span>
                         <strong>{tool.label}</strong>
                         <small>{tool.detail}</small>
+                        {isSuggested ? <span className="tool-button-hint">Suggested</span> : null}
                       </span>
                     </button>
                   )
@@ -1152,15 +2716,32 @@ function isBrowserReady(file: File, kind: FileKind) {
   return false
 }
 
-function isRunnableForTool(job: QueueJob, tool: ToolId) {
-  if (job.status === 'running') return false
+function inferMissionTool(jobs: QueueJob[]): ToolId | null {
+  if (jobs.length === 0) return null
+
+  const onlyKind = jobs.every((job) => job.kind === jobs[0].kind) ? jobs[0].kind : null
+  if (onlyKind === null) return null
+
+  if (onlyKind === 'image') return 'image-convert'
+  if (onlyKind === 'media') return 'native-engine'
+  if (onlyKind === 'document') return 'document-convert'
+  if (onlyKind === 'pdf') return 'pdf-merge'
+
+  return null
+}
+
+function isCompatibleForTool(job: QueueJob, tool: ToolId) {
   if (tool === 'native-engine') return job.kind === 'media'
   if (tool === 'document-convert') return job.kind === 'document'
   if (tool === 'pdf-optimize') return job.kind === 'pdf'
-  if (job.status === 'blocked') return false
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'
   return false
+}
+
+function isRunnableForTool(job: QueueJob, tool: ToolId) {
+  if (job.status !== 'ready' && job.status !== 'error') return false
+  return isCompatibleForTool(job, tool)
 }
 
 function createArtifact(
