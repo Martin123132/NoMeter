@@ -1,6 +1,6 @@
 # Native Engine Pack
 
-NoMeter's browser MVP already handles image conversion, PDF merge, and PDF split locally. The native engine pack adds the formats that need real system binaries.
+NoMeter's browser MVP already handles image conversion, ZIP bundling, PDF merge, and PDF split locally. The native engine pack adds the formats that need real system binaries.
 
 ## Target Engines
 

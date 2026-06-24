@@ -9,6 +9,7 @@ Commercial use requires a separate written license from TWO HANDS NETWORK LTD. T
 ## What this project does
 
 - Convert images in-browser (SVG, PNG, JPG, WebP, GIF, BMP).
+- Bundle mixed local files into ZIP archives in-browser.
 - Merge PDF files in-browser.
 - Split PDFs into ZIP archives in-browser.
 - Run desktop conversions with bundled sidecar engines:
@@ -49,6 +50,7 @@ npm run desktop:build   # Windows installer build
 ### Browser workflows
 
 - `image-convert`: image re-encode/format conversion with optional quality control.
+- `archive-zip`: bundle any local files into one ZIP archive.
 - `pdf-merge`: combine PDFs.
 - `pdf-split`: split PDF pages into ZIP archives.
 
@@ -101,7 +103,7 @@ See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md)
 
 ## Roadmap snapshot
 
-- Browser core is stable (images/PDF merge/split).
+- Browser core is stable (images/ZIP/PDF merge/split).
 - Native engine adapters (FFmpeg, Pandoc, qpdf) are wired and queue-integrated.
 - Remaining roadmap focuses on OCR support, richer document formats, and portable builds.
 

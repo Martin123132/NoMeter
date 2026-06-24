@@ -47,13 +47,25 @@ checkText(appText, appPath, 'run-or-review behavior', [
 
 checkText(appText, appPath, 'mixed queue recipe switching', [
   'function inferMissionTool(jobs: QueueJob[]): ToolId | null',
-  "if (onlyKind === null) return null",
+  "if (onlyKind === null) return 'archive-zip'",
   "if (onlyKind === 'image') return 'image-convert'",
   "if (onlyKind === 'media') return 'native-engine'",
   "if (onlyKind === 'document') return 'document-convert'",
   "if (onlyKind === 'pdf') return 'pdf-merge'",
+  "if (onlyKind === 'archive' || onlyKind === 'unknown') return 'archive-zip'",
   'Try ${suggestedToolLabel} to match this file mix.',
   'Switch to ${suggestedToolLabel}',
+])
+
+checkText(appText, appPath, 'archive zip recipe', [
+  "'archive-zip'",
+  "label: 'Make ZIP'",
+  'Bundle mixed files into one browser-local ZIP without uploading.',
+  'archiveOutputName(files, preserveNames)',
+  'runArchiveZip',
+  'zipFiles(files, preserveNames)',
+  "if (tool === 'archive-zip') return true",
+  "activeTool === 'archive-zip'",
 ])
 
 checkText(appText, appPath, 'native folder guardrails', [

@@ -26,12 +26,14 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import {
+  archiveOutputName,
   convertImageFile,
   fileStem,
   formatBytes,
   imageOutputName,
   mergePdfFiles,
   splitPdfFilesToZip,
+  zipFiles,
   type ImageFormat,
 } from './lib/converters'
 import {
@@ -49,8 +51,15 @@ import {
 } from './lib/nativeEngines'
 import './App.css'
 
-type NavId = 'convert' | 'pdf' | 'documents' | 'images' | 'media' | 'ocr' | 'recipes' | 'history'
-type ToolId = 'image-convert' | 'pdf-merge' | 'pdf-split' | 'pdf-optimize' | 'document-convert' | 'native-engine'
+type NavId = 'convert' | 'pdf' | 'documents' | 'images' | 'archive' | 'media' | 'ocr' | 'recipes' | 'history'
+type ToolId =
+  | 'image-convert'
+  | 'archive-zip'
+  | 'pdf-merge'
+  | 'pdf-split'
+  | 'pdf-optimize'
+  | 'document-convert'
+  | 'native-engine'
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
 type JobStatus = 'ready' | 'running' | 'done' | 'blocked' | 'error'
 type BannerTone = 'success' | 'warning' | 'danger'
@@ -132,6 +141,7 @@ const navItems: NavItem[] = [
   { id: 'pdf', label: 'PDF Tools', icon: FileText, tool: 'pdf-merge' },
   { id: 'documents', label: 'Documents', icon: FileText, tool: 'document-convert' },
   { id: 'images', label: 'Images', icon: Image, tool: 'image-convert' },
+  { id: 'archive', label: 'Archive', icon: Archive, tool: 'archive-zip' },
   { id: 'media', label: 'Audio/Video', icon: Video, tool: 'native-engine' },
   { id: 'ocr', label: 'OCR', icon: Captions, tool: 'native-engine' },
   { id: 'recipes', label: 'Recipes', icon: Settings2, tool: 'image-convert' },
@@ -144,6 +154,12 @@ const toolOptions: ToolOption[] = [
     label: 'Image batch',
     detail: 'PNG, JPG, WebP',
     icon: Image,
+  },
+  {
+    id: 'archive-zip',
+    label: 'Make ZIP',
+    detail: 'Bundle any files',
+    icon: Archive,
   },
   {
     id: 'pdf-merge',
@@ -184,6 +200,11 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
     source: 'PNG/JPG/WebP/etc.',
     output: 'Image formats like WebP, PNG, JPEG',
     focus: 'Drop files, choose quality/format, then Run.',
+  },
+  'archive-zip': {
+    source: 'Any local files',
+    output: 'Compressed ZIP archive',
+    focus: 'Bundle mixed files into one browser-local ZIP without uploading.',
   },
   'pdf-merge': {
     source: 'Two or more PDFs',
@@ -320,7 +341,7 @@ function App() {
   const missionCanRun = runnableJobs.length > 0
   const missionCompletedCount = jobs.filter((job) => job.status === 'done').length
   const missionHasExports = exports.length > 0
-  const missionHasBlocked = jobs.some((job) => job.status === 'blocked')
+  const missionHasBlocked = jobs.some((job) => job.status === 'blocked' && !isRunnableForTool(job, activeTool))
   const missionHasErrors = jobs.some((job) => job.status === 'error')
   const missionErrorCount = jobs.filter((job) => job.status === 'error').length
   const missionHasReadyJobs = jobs.some((job) => job.status === 'ready')
@@ -1237,6 +1258,8 @@ function App() {
             ? 'All matching files already have an output or are waiting for review.'
             : activeTool === 'image-convert'
               ? 'Add PNG, JPG, WebP, GIF, BMP, or SVG files before running image conversion.'
+              : activeTool === 'archive-zip'
+                ? 'Add any local files before building a ZIP archive.'
               : activeTool === 'native-engine'
                 ? 'Add one or more audio or video files before running FFmpeg conversion.'
                 : activeTool === 'document-convert'
@@ -1254,6 +1277,10 @@ function App() {
     try {
       if (activeTool === 'image-convert') {
         await runImageJobs(runnableJobs)
+      }
+
+      if (activeTool === 'archive-zip') {
+        await runArchiveZip(runnableJobs)
       }
 
       if (activeTool === 'pdf-merge') {
@@ -1322,6 +1349,45 @@ function App() {
           ? `${completed} image${completed === 1 ? '' : 's'} converted locally.`
           : 'No image exports were created.',
     })
+  }
+
+  const runArchiveZip = async (compatibleJobs: QueueJob[]) => {
+    compatibleJobs.forEach((job) =>
+      updateJob(job.id, {
+        status: 'running',
+        progress: 48,
+        message: 'Packing files into ZIP',
+      }),
+    )
+
+    try {
+      const files = compatibleJobs.map((job) => job.file)
+      const blob = await zipFiles(files, preserveNames)
+      const name = archiveOutputName(files, preserveNames)
+      const artifact = createArtifact(blob, name, 'ZIP archive', compatibleJobs.length)
+      setExports((current) => [artifact, ...current])
+      compatibleJobs.forEach((job) =>
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: `Packed into ${name}`,
+          outputName: name,
+        }),
+      )
+      setBanner({
+        tone: 'success',
+        text: `${compatibleJobs.length} file${compatibleJobs.length === 1 ? '' : 's'} packed into ${name}.`,
+      })
+    } catch (error) {
+      compatibleJobs.forEach((job) =>
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'ZIP creation failed.',
+        }),
+      )
+      setBanner({ tone: 'danger', text: 'ZIP archive creation failed.' })
+    }
   }
 
   const runPdfMerge = async (compatibleJobs: QueueJob[]) => {
@@ -2266,7 +2332,7 @@ function App() {
               <div>
                 <h2>Drop files into NoMeter</h2>
                 <p>
-                  Images and PDFs run in the browser; qpdf, Pandoc, and FFmpeg power desktop-only jobs.
+                  Images, PDFs, and ZIP bundles run in the browser; qpdf, Pandoc, and FFmpeg power desktop-only jobs.
                 </p>
               </div>
               <div className="drop-actions">
@@ -2278,7 +2344,6 @@ function App() {
                     type="file"
                     multiple
                     onChange={handleFileInput}
-                    accept="image/png,image/jpeg,image/webp,image/gif,image/bmp,image/svg+xml,application/pdf,video/*,audio/*,.doc,.docx,.odt,.rtf,.md,.markdown,.html,.htm,.txt,.epub,.zip,.7z"
                   />
                 </label>
                 <button type="button" className="sample-button" onClick={loadSampleFiles}>
@@ -2457,6 +2522,11 @@ function App() {
                 <div className="pdf-output">
                   <CheckCircle2 size={18} />
                   <span>Optimized PDF</span>
+                </div>
+              ) : activeTool === 'archive-zip' ? (
+                <div className="pdf-output">
+                  <Archive size={18} />
+                  <span>ZIP archive</span>
                 </div>
               ) : (
                 <div className="pdf-output">
@@ -2791,17 +2861,19 @@ function inferMissionTool(jobs: QueueJob[]): ToolId | null {
   if (jobs.length === 0) return null
 
   const onlyKind = jobs.every((job) => job.kind === jobs[0].kind) ? jobs[0].kind : null
-  if (onlyKind === null) return null
+  if (onlyKind === null) return 'archive-zip'
 
   if (onlyKind === 'image') return 'image-convert'
   if (onlyKind === 'media') return 'native-engine'
   if (onlyKind === 'document') return 'document-convert'
   if (onlyKind === 'pdf') return 'pdf-merge'
+  if (onlyKind === 'archive' || onlyKind === 'unknown') return 'archive-zip'
 
   return null
 }
 
 function isCompatibleForTool(job: QueueJob, tool: ToolId) {
+  if (tool === 'archive-zip') return true
   if (tool === 'native-engine') return job.kind === 'media'
   if (tool === 'document-convert') return job.kind === 'document'
   if (tool === 'pdf-optimize') return job.kind === 'pdf'
@@ -2811,6 +2883,9 @@ function isCompatibleForTool(job: QueueJob, tool: ToolId) {
 }
 
 function isRunnableForTool(job: QueueJob, tool: ToolId) {
+  if (job.status === 'running' || job.status === 'done') return false
+  if (tool === 'archive-zip') return true
+  if (requiresDesktopTool(tool)) return isCompatibleForTool(job, tool)
   if (job.status !== 'ready' && job.status !== 'error') return false
   return isCompatibleForTool(job, tool)
 }

@@ -32,6 +32,14 @@ export function imageOutputName(fileName: string, format: ImageFormat) {
   return `${fileStem(fileName)}.${imageExtensions[format]}`
 }
 
+export function archiveOutputName(files: File[], preserveNames: boolean) {
+  if (preserveNames && files.length === 1) {
+    return `${fileStem(files[0].name)}.zip`
+  }
+
+  return 'nometer-files.zip'
+}
+
 export async function convertImageFile(file: File, format: ImageFormat, qualityPercent: number) {
   const bitmap = await loadImage(file)
   const canvas = document.createElement('canvas')
@@ -61,6 +69,25 @@ export async function convertImageFile(file: File, format: ImageFormat, qualityP
   }
 
   return blob
+}
+
+export async function zipFiles(files: File[], preserveNames: boolean) {
+  const { default: JSZip } = await import('jszip')
+  const zip = new JSZip()
+  const usedNames = new Set<string>()
+
+  for (const [index, file] of files.entries()) {
+    const preferredName = preserveNames ? file.name : sequentialArchiveName(file.name, index + 1)
+    const safeName = uniqueArchiveName(sanitizeArchivePath(preferredName), usedNames)
+    usedNames.add(safeName)
+    zip.file(safeName, await file.arrayBuffer())
+  }
+
+  return zip.generateAsync({
+    type: 'blob',
+    compression: 'DEFLATE',
+    compressionOptions: { level: 6 },
+  })
 }
 
 export async function mergePdfFiles(files: File[]) {
@@ -128,4 +155,41 @@ function loadImage(file: File) {
 function bytesToBlob(bytes: Uint8Array, type: string) {
   const buffer = bytes.slice().buffer as ArrayBuffer
   return new Blob([buffer], { type })
+}
+
+function sequentialArchiveName(fileName: string, index: number) {
+  const extension = fileName.match(/\.([^.]+)$/)?.[1]
+  return extension ? `nometer-file-${index}.${extension}` : `nometer-file-${index}`
+}
+
+function sanitizeArchivePath(fileName: string) {
+  const fallback = 'nometer-file'
+  const sanitized = fileName
+    .replace(/^[a-z]:/i, '')
+    .replaceAll('\\', '/')
+    .split('/')
+    .filter((part) => part && part !== '.' && part !== '..')
+    .join('/')
+    .replace(/[<>:"|?*]/g, '-')
+    .split('')
+    .map((character) => (character.charCodeAt(0) < 32 ? '-' : character))
+    .join('')
+    .trim()
+
+  return sanitized || fallback
+}
+
+function uniqueArchiveName(fileName: string, usedNames: Set<string>) {
+  if (!usedNames.has(fileName)) return fileName
+
+  const extensionMatch = fileName.match(/^(.*?)(\.[^./]+)?$/)
+  const stem = extensionMatch?.[1] || 'nometer-file'
+  const extension = extensionMatch?.[2] || ''
+
+  for (let index = 1; index < 10_000; index += 1) {
+    const candidate = `${stem}-${index}${extension}`
+    if (!usedNames.has(candidate)) return candidate
+  }
+
+  return `${stem}-${globalThis.crypto?.randomUUID?.() ?? Date.now()}${extension}`
 }
