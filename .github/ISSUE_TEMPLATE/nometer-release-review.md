@@ -21,6 +21,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] `npm run release:smoke`
 - [ ] `npm run release:prepare -- --artifact-dir <artifact-dir>`
 - [ ] `npm run release:notes -- --artifact-dir <artifact-dir>`
+- [ ] `npm run qa:guided-flow-check`
 - [ ] `npm run lint`
 - [ ] `npm run build`
 - [ ] `npm run native:doctor`
@@ -44,6 +45,7 @@ Attach or link local-safe outputs from `<artifact-dir>`:
 Preferred evidence log labels (for `release:evidence` defaults):
 
 - `<local-only evidence log: lint.log>`
+- `<local-only evidence log: guided-flow-check.log>`
 - `<local-only evidence log: build.log>`
 - `<local-only evidence log: native-doctor.log>`
 - `<local-only evidence log: release-smoke.log>`
@@ -57,6 +59,7 @@ Preferred evidence log labels (for `release:evidence` defaults):
 - [ ] `checksums.sha256` contains entries for all expected public artifacts.
 - [ ] `release-provenance.txt` includes commit, branch, timestamp, and versions.
 - [ ] `release-notes.md` includes generated metadata and checksum table.
+- [ ] Guided flow guard passes for the public UI path.
 - [ ] `release-notes.md` does **not** contain private/local machine paths.
 - [ ] No private files, secrets, or sensitive data are included in release notes or checked-in docs.
 - [ ] `npm run release:public-safety-check` passes.

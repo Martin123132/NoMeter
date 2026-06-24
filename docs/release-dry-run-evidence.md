@@ -15,6 +15,7 @@ Run each command and record terminal output path:
 | Command | Evidence path | Result |
 | --- | --- | --- |
 | npm run lint | <local-only evidence log: lint.log> | |
+| npm run qa:guided-flow-check | <local-only evidence log: guided-flow-check.log> | |
 | npm run build | <local-only evidence log: build.log> | |
 | npm run native:doctor | <local-only evidence log: native-doctor.log> | |
 | npm run release:smoke | <local-only evidence log: release-smoke.log> | |

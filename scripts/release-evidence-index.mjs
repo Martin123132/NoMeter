@@ -32,6 +32,7 @@ const template = buildTemplate({
   },
   commandEvidence: {
     lint: args.lintEvidence || '',
+    guidedFlow: args.guidedFlowEvidence || '',
     build: args.buildEvidence || '',
     nativeDoctor: args.nativeDoctorEvidence || '',
     smoke: args.smokeEvidence || '',
@@ -89,6 +90,7 @@ Run each command and record terminal output path:
 | Command | Evidence path | Result |
 | --- | --- | --- |
 | npm run lint | ${formatEvidencePath(commandEvidence.lint)} | |
+| npm run qa:guided-flow-check | ${formatEvidencePath(commandEvidence.guidedFlow)} | |
 | npm run build | ${formatEvidencePath(commandEvidence.build)} | |
 | npm run native:doctor | ${formatEvidencePath(commandEvidence.nativeDoctor)} | |
 | npm run release:smoke | ${formatEvidencePath(commandEvidence.smoke)} | |
@@ -236,6 +238,7 @@ function parseArgs(argv) {
     firstReleaseRunUrl: '',
     publicSafetyRunUrl: '',
     lintEvidence: '',
+    guidedFlowEvidence: '',
     buildEvidence: '',
     nativeDoctorEvidence: '',
     smokeEvidence: '',
@@ -268,6 +271,7 @@ function parseArgs(argv) {
       '--branch',
       '--version',
       '--lint-evidence',
+      '--guided-flow-evidence',
       '--build-evidence',
       '--native-doctor-evidence',
       '--smoke-evidence',
@@ -321,6 +325,9 @@ function parseArgs(argv) {
           break
         case '--lint-evidence':
           options.lintEvidence = next
+          break
+        case '--guided-flow-evidence':
+          options.guidedFlowEvidence = next
           break
         case '--build-evidence':
           options.buildEvidence = next
@@ -391,6 +398,7 @@ Options:
   --first-release-run <url>    CI run URL for first release readiness check
   --public-safety-run <url>    CI run URL for public safety check
   --lint-evidence <path>      Local log path for npm run lint
+  --guided-flow-evidence <path> Local log path for npm run qa:guided-flow-check
   --build-evidence <path>     Local log path for npm run build
   --native-doctor-evidence <path>  Local log path for npm run native:doctor
   --smoke-evidence <path>     Local log path for npm run release:smoke

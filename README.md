@@ -111,11 +111,13 @@ Run these before PRs:
 
 ```powershell
 npm run lint
+npm run qa:guided-flow-check
 npm run build
 npm run native:doctor
 ```
 
 `native:doctor` verifies local prerequisites and emits useful warnings for optional engines not yet bundled.
+`qa:guided-flow-check` keeps the guided conversion path, mixed-file recipe switching, mobile queue cards, and native folder guardrails from drifting.
 
 ### Related scripts
 

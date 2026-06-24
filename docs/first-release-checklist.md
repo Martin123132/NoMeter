@@ -20,6 +20,7 @@ Before creating a release, confirm all expected public outputs are present in th
 - `npm run release:smoke`
 - `npm run release:review-check`
 - `npm run ci:maintenance-check`
+- `npm run qa:guided-flow-check`
 - `npm run lint`
 - `npm run build`
 - `npm run native:doctor`
@@ -33,7 +34,7 @@ Before creating a release, confirm all expected public outputs are present in th
 - For a full local capture that runs all checks and writes logs:
   - `npm run release:evidence:run`
 - Use [`docs/release-dry-run-evidence.md`](docs/release-dry-run-evidence.md) as the capture sheet for:
-  - command output locations for lint/build/doctor/smoke/review checks,
+  - command output locations for lint/guided-flow/build/doctor/smoke/review checks,
   - CI run URLs for `web-qa`, `release-smoke`, `release-review-guard`, `public-safety-check`, `native-doctor`, `ci-maintenance-check`, `first-release-check`,
   - and artifact presence verification (`NoMeter_<version>_x64-setup.exe`, `NoMeter_<version>_x64_en-US.msi`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`).
 
@@ -41,7 +42,7 @@ Before creating a release, confirm all expected public outputs are present in th
 
 - `outputs/release`
 - `docs/release-dry-run-evidence.md`
-- local-only evidence log labels such as `<local-only evidence log: lint.log>`
+- local-only evidence log labels such as `<local-only evidence log: lint.log>` and `<local-only evidence log: guided-flow-check.log>`
 
 `outputs/` and `tmp/` are gitignored local generated-output folders. Do not commit installers, checksums, provenance, draft notes, or raw logs from those folders.
 
@@ -53,6 +54,7 @@ Before creating a release, confirm all expected public outputs are present in th
 - [ ] `release-provenance.txt` contains commit, branch, timestamp, and runtime/toolchain values.
 - [ ] Evidence files can be verified with local hash commands (`certutil`, `Get-FileHash`, or `sha256sum`) before publish.
 - [ ] GitHub issue template references and release docs agree on release commands and artifacts.
+- [ ] `npm run qa:guided-flow-check` passes so the public build keeps its guided conversion flow, mixed-file switching, and native folder guardrails.
 - [ ] `npm run release:public-safety-check` passes before any release-facing material is shared.
 - [ ] Evidence-run logs are treated as local-only output; run `npm run release:evidence:cleanup` before sharing or archiving evidence bundles.
 - [ ] Generated `outputs/` artifacts and `tmp/` logs remain local-only and uncommitted.

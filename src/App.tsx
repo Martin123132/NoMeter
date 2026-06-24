@@ -2451,6 +2451,10 @@ function App() {
                 <span>{nativeStatus.detail}</span>
               </div>
               <div className="folder-settings">
+                <div className="folder-guardrail" aria-label="Native folder storage guardrail">
+                  <ShieldCheck size={15} />
+                  <span>D: defaults stay active until you choose another non-system folder. C: paths are blocked.</span>
+                </div>
                 <label className="path-field">
                   <span>
                     <HardDrive size={15} />
@@ -2485,7 +2489,10 @@ function App() {
                     Defaults
                   </button>
                   <span className={nativeFolderIssue ? 'folder-warning' : 'folder-note'}>
-                    {nativeFolderIssue ?? (nativeStatus.available ? 'Desktop saves native outputs.' : 'Stored for desktop runs.')}
+                    {nativeFolderIssue ??
+                      (nativeStatus.available
+                        ? 'Desktop saves native outputs to this Save folder.'
+                        : 'Stored for desktop runs; folder choices are kept local.')}
                   </span>
                 </div>
               </div>

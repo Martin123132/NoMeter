@@ -20,6 +20,7 @@ const config = {
   outputFile: resolve(repositoryRoot, options.outputFile || defaultOutputFile),
   logs: {
     lint: resolve(repositoryRoot, options.lintEvidence || resolve(defaultLogDir, 'lint.log')),
+    guidedFlow: resolve(repositoryRoot, options.guidedFlowEvidence || resolve(defaultLogDir, 'guided-flow-check.log')),
     build: resolve(repositoryRoot, options.buildEvidence || resolve(defaultLogDir, 'build.log')),
     nativeDoctor: resolve(repositoryRoot, options.nativeDoctorEvidence || resolve(defaultLogDir, 'native-doctor.log')),
     smoke: resolve(repositoryRoot, options.smokeEvidence || resolve(defaultLogDir, 'release-smoke.log')),
@@ -36,6 +37,11 @@ const checks = [
     name: 'npm run lint',
     command: npmCommand('run', ['lint']),
     logFile: config.logs.lint,
+  },
+  {
+    name: 'npm run qa:guided-flow-check',
+    command: npmCommand('run', ['qa:guided-flow-check']),
+    logFile: config.logs.guidedFlow,
   },
   {
     name: 'npm run build',
@@ -143,6 +149,8 @@ function buildEvidenceArgs(config, rawArgs) {
     config.outputFile,
     '--lint-evidence',
     config.logs.lint,
+    '--guided-flow-evidence',
+    config.logs.guidedFlow,
     '--build-evidence',
     config.logs.build,
     '--native-doctor-evidence',
@@ -171,6 +179,7 @@ function parseArgs(argv) {
     artifactDir: '',
     outputFile: '',
     lintEvidence: '',
+    guidedFlowEvidence: '',
     buildEvidence: '',
     nativeDoctorEvidence: '',
     smokeEvidence: '',
@@ -190,6 +199,7 @@ function parseArgs(argv) {
       '--artifact-dir',
       '--output-file',
       '--lint-evidence',
+      '--guided-flow-evidence',
       '--build-evidence',
       '--native-doctor-evidence',
       '--smoke-evidence',
@@ -212,6 +222,9 @@ function parseArgs(argv) {
           break
         case '--lint-evidence':
           parsed.lintEvidence = value
+          break
+        case '--guided-flow-evidence':
+          parsed.guidedFlowEvidence = value
           break
         case '--build-evidence':
           parsed.buildEvidence = value
@@ -272,6 +285,7 @@ Defaults:
   --artifact-dir outputs/release
   --output-file docs/release-dry-run-evidence.md
   --lint-evidence tmp/release-evidence-check-logs/lint.log
+  --guided-flow-evidence tmp/release-evidence-check-logs/guided-flow-check.log
   --build-evidence tmp/release-evidence-check-logs/build.log
   --native-doctor-evidence tmp/release-evidence-check-logs/native-doctor.log
   --smoke-evidence tmp/release-evidence-check-logs/release-smoke.log
@@ -285,6 +299,7 @@ You can override any path or output with:
   --artifact-dir <path>
   --output-file <path>
   --lint-evidence <path>
+  --guided-flow-evidence <path>
   --build-evidence <path>
   --native-doctor-evidence <path>
   --smoke-evidence <path>

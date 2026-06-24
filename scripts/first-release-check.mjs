@@ -10,6 +10,7 @@ const packageJsonPath = resolve(repositoryRoot, 'package.json')
 const gitignorePath = resolve(repositoryRoot, '.gitignore')
 const evidenceCleanupScriptPath = resolve(repositoryRoot, 'scripts', 'release-evidence-cleanup.mjs')
 const publicSafetyScriptPath = resolve(repositoryRoot, 'scripts', 'public-safety-check.mjs')
+const guidedFlowScriptPath = resolve(repositoryRoot, 'scripts', 'guided-flow-check.mjs')
 
 let failed = false
 
@@ -31,6 +32,7 @@ checkFileContains(checklistPath, 'first release command requirements', [
   'npm run release:smoke',
   'npm run release:review-check',
   'npm run ci:maintenance-check',
+  'npm run qa:guided-flow-check',
   'npm run lint',
   'npm run build',
   'npm run native:doctor',
@@ -41,6 +43,7 @@ checkFileContains(issueTemplatePath, 'release template command coverage', [
   '`npm run release:smoke`',
   '`npm run release:prepare -- --artifact-dir <artifact-dir>`',
   '`npm run release:notes -- --artifact-dir <artifact-dir>`',
+  '`npm run qa:guided-flow-check`',
   '`npm run lint`',
   '`npm run build`',
   '`npm run native:doctor`',
@@ -64,10 +67,12 @@ checkFileContains(readinessPath, 'release-readiness discoverability', [
   'release:review-check',
   'release-smoke',
   'ci:maintenance-check',
+  'qa:guided-flow-check',
   'release:evidence',
   'release:evidence:run',
   'release:evidence:cleanup',
   'release:public-safety-check',
+  'guided-flow-check.log',
   '<local-only evidence log: lint.log>',
   'release-dry-run-evidence.md',
   'Release dry-run evidence index',
@@ -81,6 +86,7 @@ checkFileContains(checklistPath, 'first release evidence checklist coverage', [
   'npm run release:evidence:run',
   'docs/release-dry-run-evidence.md',
   '<local-only evidence log: lint.log>',
+  '<local-only evidence log: guided-flow-check.log>',
   'npm run release:public-safety-check',
   'npm run release:evidence:cleanup',
   'release:notes -- --artifact-dir <artifact-dir>',
@@ -97,6 +103,7 @@ checkFileContains(checklistPath, 'evidence-log hygiene coverage', [
 checkFileContains(evidenceRunbookPath, 'runbook coverage', [
   'Release Dry-Run Evidence Index',
   'npm run lint',
+  'npm run qa:guided-flow-check',
   'npm run build',
   'npm run native:doctor',
   'npm run release:smoke',
@@ -121,11 +128,13 @@ checkFileContains(packageJsonPath, 'package script coverage', [
   '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
   '"release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs"',
   '"release:public-safety-check": "node scripts/public-safety-check.mjs"',
+  '"qa:guided-flow-check": "node scripts/guided-flow-check.mjs"',
 ])
 
 checkFileContains(issueTemplatePath, 'release template evidence log coverage', [
   '`npm run release:evidence:cleanup`',
   '`npm run release:public-safety-check`',
+  '<local-only evidence log: guided-flow-check.log>',
   '<local-only evidence log: public-safety-check.log>',
 ])
 
@@ -137,6 +146,11 @@ if (!existsSync(evidenceCleanupScriptPath)) {
 if (!existsSync(publicSafetyScriptPath)) {
   failed = true
   console.error(`[first-release-check] missing required file: ${publicSafetyScriptPath}`)
+}
+
+if (!existsSync(guidedFlowScriptPath)) {
+  failed = true
+  console.error(`[first-release-check] missing required file: ${guidedFlowScriptPath}`)
 }
 
 if (failed) {

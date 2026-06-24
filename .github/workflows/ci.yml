@@ -28,6 +28,9 @@ jobs:
       - name: Run ESLint
         run: npm run lint
 
+      - name: Run guided flow regression guard
+        run: npm run qa:guided-flow-check
+
       - name: Build web app
         run: npm run build
 

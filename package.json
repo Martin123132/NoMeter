@@ -10,6 +10,7 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
+    "qa:guided-flow-check": "node scripts/guided-flow-check.mjs",
     "native:sync-ffmpeg": "node scripts/sync-ffmpeg-sidecars.mjs",
     "native:sync-pandoc": "node scripts/sync-pandoc-sidecars.mjs",
     "native:sync-qpdf": "node scripts/sync-qpdf-sidecars.mjs",

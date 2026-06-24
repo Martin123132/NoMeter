@@ -18,6 +18,7 @@ const defaultEvidenceArgs = [
   ['--artifact-dir', defaultArtifactDir],
   ['--output-file', defaultOutputFile],
   ['--lint-evidence', resolve(defaultLogDir, 'lint.log')],
+  ['--guided-flow-evidence', resolve(defaultLogDir, 'guided-flow-check.log')],
   ['--build-evidence', resolve(defaultLogDir, 'build.log')],
   ['--native-doctor-evidence', resolve(defaultLogDir, 'native-doctor.log')],
   ['--smoke-evidence', resolve(defaultLogDir, 'release-smoke.log')],
@@ -77,6 +78,7 @@ This command calls release-evidence-index with repository defaults:
   --artifact-dir outputs/release
   --output-file docs/release-dry-run-evidence.md
   --lint-evidence tmp/release-evidence-check-logs/lint.log
+  --guided-flow-evidence tmp/release-evidence-check-logs/guided-flow-check.log
   --build-evidence tmp/release-evidence-check-logs/build.log
   --native-doctor-evidence tmp/release-evidence-check-logs/native-doctor.log
   --smoke-evidence tmp/release-evidence-check-logs/release-smoke.log

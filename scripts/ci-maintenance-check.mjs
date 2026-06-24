@@ -108,6 +108,24 @@ for (const job of jobRequirements) {
   }
 }
 
+const requiredRunSteps = [
+  {
+    label: 'guided flow regression guard',
+    snippets: ['Run guided flow regression guard', 'run: npm run qa:guided-flow-check'],
+  },
+]
+
+for (const requirement of requiredRunSteps) {
+  const missing = requirement.snippets.filter((snippet) => !workflowText.includes(snippet))
+  if (missing.length > 0) {
+    reportIssue(
+      `${requirement.label} missing from workflow`,
+      `missing ${missing.join(', ')}`
+    )
+    failed = true
+  }
+}
+
 if (workflowText.includes('actions/checkout@v4') || workflowText.includes('actions/setup-node@v4')) {
   reportIssue(
     'legacy action pin still present',
@@ -193,7 +211,7 @@ function reportIssue(message, details) {
 
 function loadText() {
   try {
-    return readFileSync(workflowPath, 'utf8')
+    return readFileSync(workflowPath, 'utf8').replace(/\r\n?/g, '\n')
   } catch (_error) {
     console.error(`[ci-maintenance-check] missing workflow file: ${workflowPath}`)
     process.exit(1)

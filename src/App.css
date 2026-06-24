@@ -1499,6 +1499,11 @@
   text-overflow: ellipsis;
 }
 
+.topbar .path-strip,
+.topbar .mission-beacon {
+  display: none;
+}
+
 .mission-location-strip {
   min-width: 0;
   max-width: 250px;
@@ -2505,6 +2510,24 @@
 .folder-settings {
   display: grid;
   gap: 8px;
+}
+
+.folder-guardrail {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 7px;
+  padding: 8px 9px;
+  border: 1px solid rgba(8, 145, 168, 0.24);
+  border-radius: 8px;
+  color: #0a6876;
+  background: #effcff;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.folder-guardrail svg {
+  flex: 0 0 auto;
+  margin-top: 1px;
 }
 
 .path-field {
