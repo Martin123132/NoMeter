@@ -1619,20 +1619,30 @@ function App() {
           })}
         </nav>
 
-        <div className="privacy-panel">
-          <ShieldCheck size={18} />
-          <div>
-            <span>Local-first</span>
-            <strong>Free personal use. No uploads.</strong>
-          </div>
-        </div>
-
         <section className="sidebar-map" aria-label="NoMeter mission map">
           <div className="section-header compact">
             <h2>Mission map</h2>
             <span className="sidebar-map-badge">{missionProgress}/4</span>
           </div>
-          <p>Jump to any point in the flow without leaving the workspace.</p>
+          <div className={`sidebar-route-card sidebar-route-card-${missionLane.tone}`} aria-label="NoMeter current route">
+            <div className="sidebar-route-card-head">
+              <span className={`sidebar-route-status sidebar-route-status-${missionCurrentStep.tone}`}>
+                {missionCurrentStepStatusLabel}
+              </span>
+              <span className="sidebar-route-progress">{missionRouteSummary}</span>
+            </div>
+            <strong>{missionLane.nextTitle}</strong>
+            <p>{missionLane.nextHint}</p>
+            <button
+              type="button"
+              className={`sidebar-route-action sidebar-route-action-${missionLane.tone}`}
+              onClick={missionLane.nextAction}
+              title={`Resume route: ${missionLane.nextTitle}`}
+            >
+              <Sparkles size={12} />
+              {missionLane.nextActionLabel}
+            </button>
+          </div>
           <div className="sidebar-map-list">
             {missionRailSteps.map((step, index) => {
               const Icon = step.icon
@@ -1664,6 +1674,14 @@ function App() {
             })}
           </div>
         </section>
+
+        <div className="privacy-panel">
+          <ShieldCheck size={18} />
+          <div>
+            <span>Local-first</span>
+            <strong>Free personal use. No uploads.</strong>
+          </div>
+        </div>
       </aside>
 
       <main className="workspace">

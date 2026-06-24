@@ -43,6 +43,16 @@ checkText(appText, appPath, 'mission director lane', [
   'missionLane.nextActionLabel',
 ])
 
+checkText(appText, appPath, 'sidebar route resume card', [
+  'sidebar-route-card',
+  'NoMeter current route',
+  'sidebar-route-status',
+  'missionCurrentStepStatusLabel',
+  'sidebar-route-progress',
+  'Resume route: ${missionLane.nextTitle}',
+  'missionLane.nextAction',
+])
+
 checkText(appText, appPath, 'run-or-review behavior', [
   'const missionCanReviewExport = missionHasExports && latestExport !== undefined',
   'const runOrFollowAction = canRunMission',
@@ -95,6 +105,8 @@ checkText(cssText, cssPath, 'responsive guided flow layout', [
   '.mission-lane',
   '.mission-lane-director',
   '.mission-lane-primary',
+  '.sidebar-route-card',
+  '.sidebar-route-action',
   '.mission-rail',
   '.topbar-actions',
   '@media (max-width: 760px)',
