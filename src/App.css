@@ -1299,6 +1299,140 @@
   border-color: rgba(48, 103, 201, 0.2);
 }
 
+.demo-mission-card {
+  border: 1px solid rgba(8, 145, 168, 0.22);
+  border-radius: 8px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 10px;
+  background: #f3fdff;
+  box-shadow: var(--soft-shadow);
+}
+
+.demo-mission-card-complete {
+  border-color: rgba(8, 145, 168, 0.34);
+  background: #effcff;
+}
+
+.demo-mission-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.demo-mission-head > div {
+  min-width: 0;
+}
+
+.demo-mission-label,
+.demo-mission-count {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  min-height: 20px;
+  padding: 0 8px;
+  border: 1px solid rgba(8, 145, 168, 0.28);
+  border-radius: 999px;
+  color: #0a6070;
+  background: #e8f8fb;
+  font-size: 10px;
+  font-weight: 760;
+  line-height: 1;
+}
+
+.demo-mission-head h3 {
+  margin: 6px 0 4px;
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.15;
+}
+
+.demo-mission-head p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.demo-mission-count {
+  flex: 0 0 auto;
+  min-height: 24px;
+  color: #0a7180;
+  background: #dff4f7;
+}
+
+.demo-mission-steps {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.demo-mission-step {
+  min-width: 0;
+  min-height: 58px;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #ffffff;
+  display: grid;
+  gap: 4px;
+}
+
+.demo-mission-step > span {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid #c7dadd;
+  color: #0a6070;
+  background: #e8f8fb;
+  font-size: 9px;
+  font-weight: 760;
+}
+
+.demo-mission-step strong {
+  color: var(--ink);
+  font-size: 11px;
+  line-height: 1.15;
+}
+
+.demo-mission-step small {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.demo-mission-step-current {
+  border-color: rgba(8, 145, 168, 0.4);
+  background: #f4feff;
+}
+
+.demo-mission-step-done {
+  border-color: rgba(8, 145, 168, 0.32);
+  background: #effcff;
+}
+
+.demo-mission-step-done > span {
+  border-color: rgba(8, 145, 168, 0.35);
+  color: #0b7180;
+  background: #cceff4;
+}
+
+.demo-mission-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.demo-mission-actions .mission-coach-cta {
+  height: 34px;
+}
+
 .mission-waypoint {
   margin-bottom: 14px;
   padding: 12px 14px;
@@ -3068,6 +3202,23 @@
 
   .mission-lane-track {
     grid-template-columns: 1fr;
+  }
+
+  .demo-mission-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .demo-mission-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-mission-actions {
+    justify-content: stretch;
+  }
+
+  .demo-mission-actions .mission-coach-cta {
+    width: 100%;
   }
 
   .mission-beacon {

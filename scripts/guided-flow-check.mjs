@@ -53,6 +53,18 @@ checkText(appText, appPath, 'sidebar route resume card', [
   'missionLane.nextAction',
 ])
 
+checkText(appText, appPath, 'sample demo mission tracker', [
+  'demoMissionActive',
+  'setDemoMissionActive',
+  'Demo mission loaded',
+  'NoMeter demo mission',
+  'demo-mission-card',
+  'Sample route live',
+  'Sample route complete',
+  'demoMissionSteps.map',
+  'Start another mission',
+])
+
 checkText(appText, appPath, 'run-or-review behavior', [
   'const missionCanReviewExport = missionHasExports && latestExport !== undefined',
   'const runOrFollowAction = canRunMission',
@@ -107,6 +119,8 @@ checkText(cssText, cssPath, 'responsive guided flow layout', [
   '.mission-lane-primary',
   '.sidebar-route-card',
   '.sidebar-route-action',
+  '.demo-mission-card',
+  '.demo-mission-steps',
   '.mission-rail',
   '.topbar-actions',
   '@media (max-width: 760px)',

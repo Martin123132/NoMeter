@@ -308,6 +308,7 @@ function App() {
   })
   const [showShortcutHints, setShowShortcutHints] = useState(false)
   const [showGuidancePulse, setShowGuidancePulse] = useState(false)
+  const [demoMissionActive, setDemoMissionActive] = useState(false)
   const [showGuidedRouteNudge, setShowGuidedRouteNudge] = useState(() => {
     try {
       return localStorage.getItem(guidedRouteNudgeStorageKey) !== '1'
@@ -460,6 +461,7 @@ function App() {
 
   const clearQueue = useCallback(() => {
     setJobs([])
+    setDemoMissionActive(false)
     setBanner(null)
   }, [])
 
@@ -909,6 +911,31 @@ function App() {
   const shouldShowGuidedRouteNudge =
     isGuidedMode && showGuidedRouteNudge && !shouldShowFirstRunGuide && jobs.length === 0 && exports.length === 0
   const missionMapActiveIndex = missionLane.activeIndex
+  const demoMissionComplete = demoMissionActive && missionHasExports
+  const demoMissionSteps = [
+    {
+      label: 'Load samples',
+      detail: jobs.length > 0 ? `${jobs.length} sample file${jobs.length === 1 ? '' : 's'} in queue` : 'Use Try sample files',
+      done: demoMissionActive && jobs.length > 0,
+    },
+    {
+      label: 'Follow route',
+      detail: missionRouteSummary,
+      done: demoMissionActive && jobs.length > 0,
+    },
+    {
+      label: 'Run locally',
+      detail: missionCompletedCount > 0 ? `${missionCompletedCount} job${missionCompletedCount === 1 ? '' : 's'} converted` : runActionLabel,
+      done: demoMissionActive && missionCompletedCount > 0,
+    },
+    {
+      label: 'Export ready',
+      detail: missionHasExports ? `${exports.length} export${exports.length === 1 ? '' : 's'} ready` : 'Collect the output',
+      done: demoMissionComplete,
+    },
+  ]
+  const demoMissionActiveStepIndex = demoMissionSteps.findIndex((step) => !step.done)
+  const demoMissionCurrentIndex = demoMissionActiveStepIndex === -1 ? demoMissionSteps.length - 1 : demoMissionActiveStepIndex
 
   useEffect(() => {
     const isFormTarget = (target: EventTarget | null) => {
@@ -1153,18 +1180,21 @@ function App() {
   }, [])
 
   const addFiles = useCallback(
-    (fileList: FileList | File[]) => {
+    (fileList: FileList | File[], options: { demoMission?: boolean } = {}) => {
       const incoming = Array.from(fileList)
 
       if (incoming.length === 0) return
 
       const nextJobs = incoming.map(createJob)
       setJobs((current) => [...nextJobs, ...current])
+      setDemoMissionActive(Boolean(options.demoMission))
       setShowGuidedRouteNudge(false)
       setShowFirstRunGuide(false)
       setBanner({
         tone: 'success',
-        text: `${incoming.length} file${incoming.length === 1 ? '' : 's'} added to the local queue.`,
+        text: options.demoMission
+          ? `Demo mission loaded: ${incoming.length} local sample file${incoming.length === 1 ? '' : 's'} ready.`
+          : `${incoming.length} file${incoming.length === 1 ? '' : 's'} added to the local queue.`,
       })
       hideQuickStart()
     },
@@ -1183,11 +1213,12 @@ function App() {
       includeDocument: activeTool === 'document-convert',
       includeMedia: activeTool === 'native-engine',
     })
+    setGuidanceModePreserve('guided')
     setShowGuidedRouteNudge(false)
     setShowFirstRunGuide(false)
     hideQuickStart()
-    addFiles(sampleFiles)
-  }, [activeTool, addFiles, hideQuickStart])
+    addFiles(sampleFiles, { demoMission: true })
+  }, [activeTool, addFiles, hideQuickStart, setGuidanceModePreserve])
 
   const handleDrop = (event: DragEvent<HTMLDivElement>) => {
     event.preventDefault()
@@ -2175,6 +2206,66 @@ function App() {
             </div>
             {missionActionHint ? <span className="mission-hint mission-hint-inline">{missionActionHint}</span> : null}
           </div>
+
+          {demoMissionActive ? (
+            <div className={`demo-mission-card ${demoMissionComplete ? 'demo-mission-card-complete' : ''}`} aria-label="NoMeter demo mission">
+              <div className="demo-mission-head">
+                <div>
+                  <span className="demo-mission-label">Demo mission</span>
+                  <h3>{demoMissionComplete ? 'Sample route complete' : 'Sample route live'}</h3>
+                  <p>
+                    {demoMissionComplete
+                      ? 'You just proved the local path: samples loaded, the route updated, conversion ran, and an export appeared.'
+                      : 'Follow the highlighted route card to run these samples and see a real local export appear.'}
+                  </p>
+                </div>
+                <span className="demo-mission-count">
+                  {demoMissionCurrentIndex + 1}/{demoMissionSteps.length}
+                </span>
+              </div>
+              <div className="demo-mission-steps">
+                {demoMissionSteps.map((step, index) => (
+                  <span
+                    key={step.label}
+                    className={`demo-mission-step ${step.done ? 'demo-mission-step-done' : index === demoMissionCurrentIndex ? 'demo-mission-step-current' : ''}`}
+                  >
+                    <span>{index + 1}</span>
+                    <strong>{step.label}</strong>
+                    <small>{step.detail}</small>
+                  </span>
+                ))}
+              </div>
+              <div className="demo-mission-actions">
+                {demoMissionComplete && latestExport ? (
+                  <button type="button" className="ghost-button mission-coach-cta" onClick={openLatestExport}>
+                    <Download size={14} />
+                    Open latest export
+                  </button>
+                ) : (
+                  <button type="button" className="ghost-button mission-coach-cta" onClick={missionLane.nextAction}>
+                    <Sparkles size={14} />
+                    {missionLane.nextActionLabel}
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="ghost-button mission-coach-cta"
+                  onClick={() => {
+                    setJobs([])
+                    setDemoMissionActive(false)
+                    setShowQuickStart(true)
+                    setBanner({
+                      tone: 'success',
+                      text: 'Demo mission reset. Add your own files or run the sample mission again.',
+                    })
+                  }}
+                >
+                  <Workflow size={14} />
+                  Start another mission
+                </button>
+              </div>
+            </div>
+          ) : null}
 
           {missionCompletion ? (
             <div className={`mission-complete mission-complete-${missionCompletion.tone}`}>
