@@ -3,7 +3,7 @@
   display: grid;
   grid-template-columns: 248px minmax(0, 1fr);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 249, 247, 0.9)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.86), rgba(244, 249, 250, 0.9)),
     var(--page);
   color: var(--ink);
 }
@@ -333,7 +333,7 @@
   letter-spacing: 0.02em;
   text-transform: uppercase;
   color: #0a5c68;
-  background: #d8f1e2;
+  background: #dff5f8;
   border: 1px solid rgba(8, 111, 128, 0.35);
 }
 
@@ -473,7 +473,7 @@
   padding: 12px 14px;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: linear-gradient(180deg, #f3fbf6, #f8fdf8);
+  background: linear-gradient(180deg, #f1fbfd, #fbfeff);
   box-shadow: var(--soft-shadow);
 }
 
@@ -508,7 +508,7 @@
   padding: 12px;
   border: 1px solid var(--line);
   border-radius: 10px;
-  background: linear-gradient(180deg, #ffffff, #f6fcf8);
+  background: linear-gradient(180deg, #ffffff, #f5fcfd);
   box-shadow: var(--soft-shadow);
 }
 
@@ -760,7 +760,7 @@
 }
 
 .mission-lane-success {
-  background: #f4fff5;
+  background: #f1fcfd;
 }
 
 .mission-lane-info {
@@ -2302,7 +2302,7 @@
 
 .drop-zone.dragging {
   border-color: var(--accent);
-  background: #f0fbf5;
+  background: #effcff;
 }
 
 .drop-icon {
@@ -2512,7 +2512,7 @@
   place-items: center;
   border-radius: 7px;
   color: #0b7180;
-  background: #eef8f3;
+  background: #e8f8fb;
 }
 
 .caps {
@@ -2543,7 +2543,7 @@
 
 .status-badge.done {
   color: #0b7180;
-  background: #e9faf2;
+  background: #e8f8fb;
 }
 
 .status-badge.blocked {
@@ -2695,7 +2695,7 @@
 .tool-button-suggested {
   position: relative;
   border-color: rgba(8, 111, 128, 0.45);
-  background: #f5fffb;
+  background: #f3fcfd;
 }
 
 .tool-button-suggested::after {

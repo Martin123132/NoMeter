@@ -35,7 +35,7 @@
 
 ## Phase 4: Release
 
-- [ ] Windows portable build.
+- [x] Windows portable build.
 - [x] Windows installer.
 - [ ] GitHub Actions release pipeline.
 - [ ] macOS build.

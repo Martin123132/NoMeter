@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process'
 const fixtureDir = resolve(process.cwd(), 'tmp', 'release-smoke-artifacts')
 const packageVersion = readPackageVersion()
 const fixtureFiles = [
+  `NoMeter_${packageVersion}_x64-portable.exe`,
   `NoMeter_${packageVersion}_x64-setup.exe`,
   `NoMeter_${packageVersion}_x64_en-US.msi`,
   'nometer-static.zip',

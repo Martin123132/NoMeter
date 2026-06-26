@@ -129,21 +129,22 @@ ${artifacts}
 
 function getArtifactRows(artifactDir, version, shouldCheck) {
   const expectedArtifacts = [
-    `NoMeter_${version}_x64-setup.exe`,
-    `NoMeter_${version}_x64_en-US.msi`,
-    'nometer-static.zip',
-    'release-provenance.txt',
-    'checksums.sha256',
-    'release-notes.md',
+    { fileName: `NoMeter_${version}_x64-portable.exe`, kind: 'required' },
+    { fileName: 'nometer-static.zip', kind: 'required' },
+    { fileName: 'release-provenance.txt', kind: 'required' },
+    { fileName: 'checksums.sha256', kind: 'required' },
+    { fileName: 'release-notes.md', kind: 'required' },
+    { fileName: `NoMeter_${version}_x64-setup.exe`, kind: 'optional installer' },
+    { fileName: `NoMeter_${version}_x64_en-US.msi`, kind: 'optional installer' },
   ]
   const rows = []
   let missing = false
 
-  for (const fileName of expectedArtifacts) {
+  for (const { fileName, kind } of expectedArtifacts) {
     const filePath = resolve(artifactDir, fileName)
     const exists = existsSync(filePath) ? 'YES' : 'NO'
-    rows.push(`| ${fileName} | ${formatArtifactPath(artifactDir, fileName)} | ${exists} |`)
-    if (shouldCheck && !existsSync(filePath)) {
+    rows.push(`| ${fileName} | ${kind} | ${formatArtifactPath(artifactDir, fileName)} | ${exists} |`)
+    if (shouldCheck && kind === 'required' && !existsSync(filePath)) {
       missing = true
     }
   }
@@ -153,10 +154,10 @@ function getArtifactRows(artifactDir, version, shouldCheck) {
   }
 
   if (!rows.length) {
-    return '| File | Location | Verified |\n| --- | --- | --- |\n| _No expected artifacts configured_ | - | - |'
+    return '| File | Kind | Location | Verified |\n| --- | --- | --- | --- |\n| _No expected artifacts configured_ | - | - | - |'
   }
 
-  return `| File | Location | Verified |\n| --- | --- | --- |\n${rows.join('\n')}`
+  return `| File | Kind | Location | Verified |\n| --- | --- | --- | --- |\n${rows.join('\n')}`
 }
 
 function loadPackageJson() {

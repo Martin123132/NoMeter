@@ -25,6 +25,10 @@ const requirements = [
         pattern: '`npm run release:prepare -- --artifact-dir',
       },
       {
+        label: 'Template includes portable artifact command',
+        pattern: '`npm run release:portable -- --artifact-dir',
+      },
+      {
         label: 'Template includes required release:notes command',
         pattern: '`npm run release:notes -- --artifact-dir',
       },
@@ -47,6 +51,10 @@ const requirements = [
       {
         label: 'Template requires release notes artifact file',
         pattern: 'release-notes.md',
+      },
+      {
+        label: 'Template includes public artifact rule',
+        pattern: 'NoMeter_*-portable.exe',
       },
       {
         label: 'Template includes public artifact rule',
@@ -74,6 +82,10 @@ const requirements = [
       {
         label: 'Readiness doc references release:prepare',
         pattern: 'release:prepare',
+      },
+      {
+        label: 'Readiness doc references portable artifact builder',
+        pattern: 'release:portable',
       },
       {
         label: 'Readiness doc references release:notes',

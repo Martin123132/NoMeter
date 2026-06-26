@@ -39,14 +39,15 @@ Run each command and record terminal output path:
 
 ## Required artifacts
 
-| File | Location | Verified |
-| --- | --- | --- |
-| NoMeter_0.5.0_x64-setup.exe | outputs/release/NoMeter_0.5.0_x64-setup.exe | YES |
-| NoMeter_0.5.0_x64_en-US.msi | outputs/release/NoMeter_0.5.0_x64_en-US.msi | YES |
-| nometer-static.zip | outputs/release/nometer-static.zip | YES |
-| release-provenance.txt | outputs/release/release-provenance.txt | YES |
-| checksums.sha256 | outputs/release/checksums.sha256 | YES |
-| release-notes.md | outputs/release/release-notes.md | YES |
+| File | Kind | Location | Verified |
+| --- | --- | --- | --- |
+| NoMeter_0.5.0_x64-portable.exe | required | outputs/release/NoMeter_0.5.0_x64-portable.exe | YES |
+| nometer-static.zip | required | outputs/release/nometer-static.zip | YES |
+| release-provenance.txt | required | outputs/release/release-provenance.txt | YES |
+| checksums.sha256 | required | outputs/release/checksums.sha256 | YES |
+| release-notes.md | required | outputs/release/release-notes.md | YES |
+| NoMeter_0.5.0_x64-setup.exe | optional installer | outputs/release/NoMeter_0.5.0_x64-setup.exe | NO |
+| NoMeter_0.5.0_x64_en-US.msi | optional installer | outputs/release/NoMeter_0.5.0_x64_en-US.msi | NO |
 
 ## Public-safe gates
 

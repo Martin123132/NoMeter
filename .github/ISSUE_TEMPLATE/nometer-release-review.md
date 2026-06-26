@@ -19,6 +19,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 ## Required verification commands (run locally)
 
 - [ ] `npm run release:smoke`
+- [ ] `npm run release:portable -- --artifact-dir <artifact-dir>`
 - [ ] `npm run release:prepare -- --artifact-dir <artifact-dir>`
 - [ ] `npm run release:notes -- --artifact-dir <artifact-dir>`
 - [ ] `npm run license:positioning-check`
@@ -70,7 +71,7 @@ Preferred evidence log labels (for `release:evidence` defaults):
 
 ## Public artifact rules
 
-- [ ] Artifacts are limited to public build outputs only (`NoMeter_*.exe`, `NoMeter_*.msi`, `nometer-static.zip` or explicit replacement list).
+- [ ] Artifacts are limited to public build outputs only (`NoMeter_*-portable.exe`, optional `NoMeter_*.exe`/`NoMeter_*.msi`, `nometer-static.zip`, or explicit replacement list).
 - [ ] No screenshots/paths from private local folders are referenced in release metadata.
 - [ ] Any example paths are sanitized and non-sensitive.
 

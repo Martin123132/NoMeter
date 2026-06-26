@@ -17,6 +17,7 @@ let failed = false
 
 checkFileContains(checklistPath, 'expected public artifacts', [
   '## Public artifacts inventory',
+  'NoMeter_<version>_x64-portable.exe',
   'NoMeter_<version>_x64-setup.exe',
   'NoMeter_<version>_x64_en-US.msi',
   'nometer-static.zip',
@@ -29,6 +30,7 @@ checkFileContains(checklistPath, 'expected public artifacts', [
 
 checkFileContains(checklistPath, 'first release command requirements', [
   'npm run release:prepare -- --artifact-dir <artifact-dir>',
+  'npm run release:portable -- --artifact-dir <artifact-dir>',
   'npm run release:notes -- --artifact-dir <artifact-dir>',
   'npm run release:smoke',
   'npm run release:review-check',
@@ -58,6 +60,7 @@ checkFileContains(issueTemplatePath, 'release template command coverage', [
   'release-provenance.txt',
   'checksums.sha256',
   'release-notes.md',
+  'NoMeter_*-portable.exe',
   'NoMeter_*.exe',
   'NoMeter_*.msi',
   'nometer-static.zip',
@@ -118,6 +121,7 @@ checkFileContains(evidenceRunbookPath, 'runbook coverage', [
   'npm run release:public-safety-check',
   'NoMeter_',
   '_x64-setup.exe',
+  '_x64-portable.exe',
   '_x64_en-US.msi',
   'checksums.sha256',
   'release-notes.md',
@@ -131,6 +135,7 @@ checkFileContains(gitignorePath, 'local generated output ignore coverage', [
 
 checkFileContains(packageJsonPath, 'package script coverage', [
   '"release:evidence": "node scripts/release-evidence.mjs"',
+  '"release:portable": "node scripts/release-portable.mjs"',
   '"release:evidence:run": "node scripts/release-evidence-run.mjs"',
   '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
   '"release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs"',

@@ -42,8 +42,15 @@ Desktop mode enables the native engines above. Use the sidebars to switch betwee
 ```powershell
 npm run lint
 npm run build
-npm run desktop:build   # Windows installer build
+npm run release:portable -- --artifact-dir D:\path\to\artifacts
 ```
+
+`release:portable` builds the web bundle, builds the desktop executable without packaging installers, and writes:
+
+- `NoMeter_<version>_x64-portable.exe`
+- `nometer-static.zip`
+
+Installer builds are still available with `npm run desktop:build`, but the portable artifact path is the preferred first-release route while installer packaging is being hardened.
 
 ## Usage guide
 
@@ -79,14 +86,16 @@ The following outputs are demo-safe and sanitized:
 For a public-safe release preparation pass (without publishing a release), use:
 
 ```powershell
+npm run release:portable -- --artifact-dir D:\path\to\artifacts
 npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 ```
 
-This runs lint + licence positioning + web build + native doctor, then writes provenance and checksums for release candidates (installers/static bundle) to the artifact folder.
+This builds the portable/static artifacts, then runs lint + licence positioning + web build + native doctor and writes provenance and checksums to the artifact folder.
 
 Generate a paste-ready release draft (without publishing):
 
 ```powershell
+npm run release:portable -- --artifact-dir D:\path\to\artifacts
 npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 npm run release:notes -- --artifact-dir D:\path\to\artifacts --stdout
 ```
@@ -105,7 +114,7 @@ See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md)
 
 - Browser core is stable (images/ZIP/PDF merge/split).
 - Native engine adapters (FFmpeg, Pandoc, qpdf) are wired and queue-integrated.
-- Remaining roadmap focuses on OCR support, richer document formats, and portable builds.
+- Remaining roadmap focuses on installer hardening, OCR support, and richer document formats.
 
 Full roadmap details live in [`ROADMAP.md`](ROADMAP.md).
 

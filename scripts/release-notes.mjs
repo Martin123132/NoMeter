@@ -176,7 +176,7 @@ sha256sum <artifact>
 ## Release notes checklist
 
 - [ ] Confirm version bump is intentional (expected: ${releaseVersion}).
-- [ ] Confirm all target OS/arch installers are present.
+- [ ] Confirm all target OS/arch artifacts are present.
 - [ ] Confirm checksums match post-upload files.
 - [ ] Confirm provenance values align with this commit.
 - [ ] Add a user-facing changelog section and paste this draft into GitHub Releases.

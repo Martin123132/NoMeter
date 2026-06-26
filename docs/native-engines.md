@@ -50,6 +50,12 @@ npm.cmd run native:doctor
 
 to verify prerequisites. Ghostscript, Tesseract, and OCRmyPDF are expected warnings until their adapters are added.
 
+Build the preferred portable release artifacts with:
+
+```powershell
+npm.cmd run release:portable -- --artifact-dir D:\path\to\artifacts
+```
+
 Build installers with:
 
 ```powershell

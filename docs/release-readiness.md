@@ -1,14 +1,21 @@
 # Release Readiness Checklist
 
-This document describes how to prepare and publish a release-ready artifact set for NoMeter without exposing private workspace data.
+This document describes how to prepare and review a release-ready artifact set for NoMeter without exposing private workspace data.
 
 ## Current public artifacts
 
-The workspace currently produces these installers/bundles:
+The preferred first-release artifact set is:
+
+- `NoMeter_*-portable.exe` (Windows portable desktop executable)
+- `nometer-static.zip` (browser/static delivery bundle)
+- `release-provenance.txt`
+- `checksums.sha256`
+- `release-notes.md`
+
+Optional installer artifacts can also be included when the installer build path is healthy:
 
 - `NoMeter_*.exe` (NSIS installer)
 - `NoMeter_*.msi` (MSI installer)
-- `nometer-static.zip` (browser/static delivery bundle)
 
 These are expected in an output directory you control during release prep, typically:
 
@@ -22,8 +29,9 @@ These are expected in an output directory you control during release prep, typic
    - `npm run build`
    - `npm run native:doctor`
 2. Build release artifacts:
-   - `npm run desktop:build`
-   - verify outputs exist in the selected artifact folder.
+   - Preferred first-release path: `npm run release:portable -- --artifact-dir <path>`
+   - Optional installer path: `npm run desktop:build`, then copy fresh installer outputs into the selected artifact folder.
+   - Verify outputs exist in the selected artifact folder.
 3. Confirm provenance values are documented for the build:
    - commit SHA (`git rev-parse HEAD`)
    - build timestamp
@@ -35,11 +43,12 @@ These are expected in an output directory you control during release prep, typic
    - review generated checksums file
 5. Include a short human-readable note in the release body about the artifact set and OS/arch targets.
 
-## One-command local release prep
+## Local release prep
 
-Run the full local preparation path in one command:
+Run the full local preparation path:
 
 ```powershell
+npm run release:portable -- --artifact-dir D:\path\to\artifacts
 npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 ```
 
@@ -52,6 +61,8 @@ This runs (in order):
 - `npm run release:provenance -- --artifact-dir <path>`
 - `npm run release:checksums -- --artifact-dir <path>`
 
+If the artifacts already exist and you only need metadata refresh, run `release:prepare` by itself. Use `release:portable` first when you want a fresh portable executable and static web bundle.
+
 To run in constrained environments (e.g., if you are only validating metadata), use:
 
 ```powershell
@@ -60,11 +71,13 @@ npm run release:prepare -- --artifact-dir D:\path\to\artifacts --skip-build --sk
 
 Use `--skip-license` only for a narrowly scoped metadata test where public wording has already been checked.
 
-## One-command release draft generation
+## Release draft generation
 
 After a successful `release:prepare`, generate a sanitized draft release body:
 
 ```powershell
+npm run release:portable -- --artifact-dir D:\path\to\artifacts
+npm run release:prepare -- --artifact-dir D:\path\to\artifacts
 npm run release:notes -- --artifact-dir D:\path\to\artifacts
 ```
 
@@ -160,7 +173,7 @@ This writes an evidence sheet with:
   - `npm run release:first-release-check`
 - public-safety check output for `npm run release:public-safety-check`
 - CI run URLs for `Web QA`, `Release metadata smoke`, `Release review guard`, `Public safety check`, `Native doctor`, `CI maintenance check`, `First release readiness check`
-- expected artifact presence (`NoMeter_<version>_x64-setup.exe`, `NoMeter_<version>_x64_en-US.msi`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`)
+- expected artifact presence (`NoMeter_<version>_x64-portable.exe`, `nometer-static.zip`, `release-provenance.txt`, `checksums.sha256`, `release-notes.md`) plus optional installer entries when present
 - public-safe review gates and sign-off fields
 
 ## Public safety guard
@@ -276,14 +289,14 @@ $env:NOMETER_CHECKSUM_STRICT="1"
 npm run release:checksums
 
 # custom filenames (comma-separated)
-$env:NOMETER_ARTIFACTS="NoMeter_0.5.0_x64-setup.exe,NoMeter_0.5.0_x64_en-US.msi,nometer-static.zip"
+$env:NOMETER_ARTIFACTS="NoMeter_0.5.0_x64-portable.exe,nometer-static.zip"
 npm run release:checksums
 ```
 
 By default the command:
 
 - searches `outputs` under the repo root,
-- matches installer and static artifact patterns,
+- matches portable executable, installer, and static artifact patterns,
 - writes `checksums.sha256` in the artifact folder,
 - exits successfully even when no artifacts are found unless `NOMETER_CHECKSUM_STRICT=1`.
 
@@ -298,8 +311,8 @@ Add generated checksums to your release notes and instruct users to compare hash
 Example:
 
 ```powershell
-certutil -hashfile NoMeter_0.5.0_x64-setup.exe SHA256
-Get-FileHash NoMeter_0.5.0_x64-setup.exe -Algorithm SHA256
+certutil -hashfile NoMeter_0.5.0_x64-portable.exe SHA256
+Get-FileHash NoMeter_0.5.0_x64-portable.exe -Algorithm SHA256
 ```
 
 ## Pre-release approval checklist
@@ -345,7 +358,7 @@ This guard fails if:
 ## First release checklist
 
 - [First release checklist](first-release-checklist.md) contains:
-  - expected public artifacts (`NoMeter_*.exe`, `NoMeter_*.msi`, `nometer-static.zip`),
+  - expected public artifacts (`NoMeter_*-portable.exe`, optional `NoMeter_*.exe`/`NoMeter_*.msi`, `nometer-static.zip`),
   - required metadata outputs (`release-provenance.txt`, `checksums.sha256`, `release-notes.md`),
   - required pre-publish commands (`release:prepare`, `release:notes`, `release:smoke`, `release:review-check`, `release:public-safety-check`, `ci:maintenance-check`, `license:positioning-check`, `qa:guided-flow-check`, `lint`, `build`, `native:doctor`),
   - and public-safe evidence gates.
