@@ -26,7 +26,7 @@ const provenance = [
   `GitCommit: ${commandText(['git', ['rev-parse', 'HEAD']])}`,
   `GitCommitShort: ${commandText(['git', ['rev-parse', '--short', 'HEAD']])}`,
   `GitBranch: ${commandText(['git', ['branch', '--show-current']]) || 'detached'}`,
-  `GitTag: ${commandText(['git', ['tag', '--points-at', 'HEAD']], { fallback: 'none' })}`,
+  `GitTag: ${commandText(['git', ['tag', '--points-at', 'HEAD']], { fallback: 'none', empty: 'none' })}`,
   `ArtifactsDir: ${relativePath(projectRoot, artifactDir)}`,
   '',
 ]
@@ -42,7 +42,7 @@ writeFileSync(outputFile, `${provenance.join('\n')}\n`, 'utf8')
 console.log(`Wrote release provenance to ${outputFile}`)
 
 function commandText([command, commandArgs], options = {}) {
-  const { multiline = false, fallback = 'unavailable' } = options
+  const { multiline = false, fallback = 'unavailable', empty = '' } = options
   try {
     const isCmd = command.endsWith('.cmd')
     const spawnCommand = isCmd ? (process.env.comspec || 'cmd') : command
@@ -56,7 +56,7 @@ function commandText([command, commandArgs], options = {}) {
       return fallback
     }
     const combined = `${result.stdout || ''}${result.stderr || ''}`.trim()
-    if (!combined) return fallback
+    if (!combined) return empty
     return multiline ? combined : combined.split('\n')[0]
   } catch (_error) {
     return fallback
