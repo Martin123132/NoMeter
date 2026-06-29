@@ -12,6 +12,9 @@ const tempDir = envValue('NOMETER_TEMP', 'OPENFORGE_TEMP') || 'D:\\Codex\\Temp'
 const ffmpegRoot = envValue('NOMETER_FFMPEG_ROOT', 'OPENFORGE_FFMPEG_ROOT') || join(noMeterRoot, 'tools', 'ffmpeg')
 const pandocRoot = envValue('NOMETER_PANDOC_ROOT', 'OPENFORGE_PANDOC_ROOT') || join(noMeterRoot, 'tools', 'pandoc')
 const qpdfRoot = envValue('NOMETER_QPDF_ROOT', 'OPENFORGE_QPDF_ROOT') || join(noMeterRoot, 'tools', 'qpdf')
+const ghostscriptRoot = envValue('NOMETER_GHOSTSCRIPT_ROOT', 'OPENFORGE_GHOSTSCRIPT_ROOT') || join(noMeterRoot, 'tools', 'ghostscript')
+const tesseractRoot = envValue('NOMETER_TESSERACT_ROOT', 'OPENFORGE_TESSERACT_ROOT') || join(noMeterRoot, 'tools', 'tesseract')
+const ocrmypdfRoot = envValue('NOMETER_OCRMYPDF_ROOT', 'OPENFORGE_OCRMYPDF_ROOT') || join(noMeterRoot, 'tools', 'ocrmypdf')
 const pathWithToolchain = existsSync(cargoBin)
   ? `${cargoBin}${delimiter}${process.env.PATH || ''}`
   : process.env.PATH || ''
@@ -31,6 +34,9 @@ const localFfmpeg = findFile(ffmpegRoot, 'ffmpeg.exe')
 const localFfprobe = findFile(ffmpegRoot, 'ffprobe.exe')
 const localPandoc = findFile(pandocRoot, 'pandoc.exe')
 const localQpdf = findFile(qpdfRoot, 'qpdf.exe')
+const localGhostscript = findFile(ghostscriptRoot, 'gswin64c.exe') || findFile(ghostscriptRoot, 'gs.exe')
+const localTesseract = findFile(tesseractRoot, 'tesseract.exe')
+const localOcrmypdf = findFile(ocrmypdfRoot, 'ocrmypdf.exe') || findFile(ocrmypdfRoot, 'ocrmypdf')
 const checks = [
   { name: 'Node.js', command: 'node', args: ['--version'], required: true },
   npmCheck(),
@@ -40,9 +46,9 @@ const checks = [
   { name: 'FFprobe', command: localFfprobe || 'ffprobe', args: ['-version'], required: false },
   { name: 'Pandoc', command: localPandoc || 'pandoc', args: ['--version'], required: false },
   { name: 'qpdf', command: localQpdf || 'qpdf', args: ['--version'], required: false },
-  { name: 'Ghostscript', command: 'gswin64c', args: ['--version'], required: false },
-  { name: 'Tesseract', command: 'tesseract', args: ['--version'], required: false },
-  { name: 'OCRmyPDF', command: 'ocrmypdf', args: ['--version'], required: false },
+  { name: 'Ghostscript', command: localGhostscript || 'gswin64c', args: ['--version'], required: false },
+  { name: 'Tesseract', command: localTesseract || 'tesseract', args: ['--version'], required: false },
+  { name: 'OCRmyPDF', command: localOcrmypdf || 'ocrmypdf', args: ['--version'], required: false },
 ]
 
 const drive = parse(projectRoot).root.toUpperCase()
@@ -54,6 +60,9 @@ console.log(`Drive: ${drive}`)
 console.log(`Cargo home: ${cargoHome}`)
 console.log(`Rustup home: ${rustupHome}`)
 console.log(`Work dir: ${commonEnv.NOMETER_WORK_DIR}`)
+console.log(`Optional Ghostscript root: ${ghostscriptRoot}`)
+console.log(`Optional Tesseract root: ${tesseractRoot}`)
+console.log(`Optional OCRmyPDF root: ${ocrmypdfRoot}`)
 
 if (drive.startsWith('C:')) {
   failedRequired = true

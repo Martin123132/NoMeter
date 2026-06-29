@@ -2800,8 +2800,44 @@
   background: #f7f9f8;
 }
 
+.engine-row-planned {
+  background: #faf8f2;
+}
+
 .engine-row svg {
   color: #245b9c;
+}
+
+.engine-copy {
+  min-width: 0;
+}
+
+.engine-heading {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+}
+
+.engine-status-badge {
+  flex: 0 0 auto;
+  padding: 2px 6px;
+  border-radius: 999px;
+  font-size: 9px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.engine-status-badge-wired {
+  color: #0b7180;
+  background: #dff5f8;
+  border: 1px solid rgba(8, 145, 168, 0.3);
+}
+
+.engine-status-badge-planned {
+  color: #77531a;
+  background: #fff2dc;
+  border: 1px solid rgba(181, 118, 31, 0.3);
 }
 
 .engine-row code {

@@ -57,7 +57,7 @@ export const nativeEngineCatalog: NativeEngine[] = [
   {
     id: 'ghostscript',
     name: 'Ghostscript',
-    role: 'PDF compression and rasterization',
+    role: 'planned PDF compression/rasterization',
     command: 'gswin64c',
     sidecarName: 'ghostscript',
     status: 'planned',
@@ -65,7 +65,7 @@ export const nativeEngineCatalog: NativeEngine[] = [
   {
     id: 'ocrmypdf',
     name: 'OCRmyPDF',
-    role: 'scanned PDF text layer',
+    role: 'planned searchable scanned PDFs',
     command: 'ocrmypdf',
     sidecarName: 'ocrmypdf',
     status: 'planned',
@@ -73,7 +73,7 @@ export const nativeEngineCatalog: NativeEngine[] = [
   {
     id: 'tesseract',
     name: 'Tesseract',
-    role: 'offline OCR recognition',
+    role: 'planned offline OCR recognition',
     command: 'tesseract',
     sidecarName: 'tesseract',
     status: 'planned',
@@ -127,7 +127,7 @@ export async function pickNativeFolder(defaultPath?: string): Promise<string | n
 }
 
 export function getNativeCommandPreview(engine: NativeEngine) {
-  return `${engine.command} via ${engine.sidecarName} sidecar`
+  return `${engine.command} via ${engine.sidecarName} ${engine.status === 'wired' ? 'sidecar' : 'planned sidecar'}`
 }
 
 export async function transcodeMediaFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {

@@ -4,14 +4,14 @@ NoMeter's browser MVP already handles image conversion, ZIP bundling, PDF merge,
 
 ## Target Engines
 
-| Engine | Use |
-|---|---|
-| FFmpeg | Audio/video conversion, extraction, GIF/video workflows |
-| Pandoc | Documents, Markdown, HTML, DOCX, ODT |
-| qpdf | PDF repair, linearization, structural operations |
-| Ghostscript | PDF compression and rasterization |
-| OCRmyPDF | Searchable scanned PDFs |
-| Tesseract | OCR text recognition |
+| Engine | Use | Status |
+|---|---|---|
+| FFmpeg | Audio/video conversion, extraction, GIF/video workflows | Wired |
+| Pandoc | Documents, Markdown, HTML, DOCX, ODT | Wired |
+| qpdf | PDF repair, linearization, structural operations | Wired |
+| Ghostscript | PDF compression and rasterization | Planned optional engine |
+| OCRmyPDF | Searchable scanned PDFs | Planned optional engine |
+| Tesseract | OCR text recognition | Planned optional engine |
 
 ## Adapter Rules
 
@@ -32,6 +32,9 @@ Paths shown below are examples; they should be configurable via your local envir
 - FFmpeg tools: `${NOMETER_ROOT}/tools/ffmpeg`
 - Pandoc tools: `${NOMETER_ROOT}/tools/pandoc`
 - qpdf tools: `${NOMETER_ROOT}/tools/qpdf`
+- Ghostscript tools: `${NOMETER_GHOSTSCRIPT_ROOT}` or `${NOMETER_ROOT}/tools/ghostscript`
+- Tesseract tools: `${NOMETER_TESSERACT_ROOT}` or `${NOMETER_ROOT}/tools/tesseract`
+- OCRmyPDF tools: `${NOMETER_OCRMYPDF_ROOT}` or `${NOMETER_ROOT}/tools/ocrmypdf`
 - FFmpeg sidecars: `src-tauri/binaries/ffmpeg-<host-triple>.exe` and `src-tauri/binaries/ffprobe-<host-triple>.exe`
 - Pandoc sidecar: `src-tauri/binaries/pandoc-<host-triple>.exe`
 - qpdf sidecar: `src-tauri/binaries/qpdf-<host-triple>.exe`
@@ -49,6 +52,8 @@ npm.cmd run native:doctor
 ```
 
 to verify prerequisites. Ghostscript, Tesseract, and OCRmyPDF are expected warnings until their adapters are added.
+
+`native:doctor` checks the optional engine roots above before falling back to `PATH`. Passing optional checks means the tool is discoverable on the developer machine; it does not mean the corresponding NoMeter adapter is wired yet. The UI marks these engines as `Planned` until a native command, sidecar policy, and sample/fixture path exist.
 
 Build the preferred portable release artifacts with:
 
@@ -71,3 +76,13 @@ The current FFmpeg adapter accepts an audio/video `File`, writes it to the confi
 The current Pandoc adapter accepts a document `File`, writes it to the configured work folder, runs the bundled Pandoc sidecar, copies the output to the configured save folder, and returns downloadable HTML, DOCX, Markdown, or EPUB.
 
 The current qpdf adapter accepts a PDF `File`, writes it to the configured work folder, runs the bundled qpdf sidecar, copies the output to the configured save folder, and returns a repaired, compressed, linearized PDF.
+
+## Planned OCR/PDF Engine Rules
+
+Before Ghostscript, Tesseract, or OCRmyPDF is promoted from `Planned` to `Wired`:
+
+- Add a dedicated Tauri command with structured arguments.
+- Add sidecar or local-tool discovery rules.
+- Keep work and save folders explicit and off the system drive.
+- Add a deterministic sample or fixture path where practical.
+- Update `native:doctor`, the UI engine status, and release notes together.

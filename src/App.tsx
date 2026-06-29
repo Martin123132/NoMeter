@@ -2747,10 +2747,15 @@ function App() {
               </div>
               <div className="engine-list">
                 {nativeEngineCatalog.map((engine) => (
-                  <div className="engine-row" key={engine.id}>
+                  <div className={`engine-row engine-row-${engine.status}`} key={engine.id}>
                     <AudioWaveform size={16} />
-                    <span>
-                      <strong>{engine.name}</strong>
+                    <span className="engine-copy">
+                      <span className="engine-heading">
+                        <strong>{engine.name}</strong>
+                        <span className={`engine-status-badge engine-status-badge-${engine.status}`}>
+                          {engine.status === 'wired' ? 'Wired' : 'Planned'}
+                        </span>
+                      </span>
                       <small>{engine.role}</small>
                       <code>{getNativeCommandPreview(engine)}</code>
                     </span>

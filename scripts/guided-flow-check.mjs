@@ -120,6 +120,12 @@ checkText(appText, appPath, 'native folder guardrails', [
   'path-picker-button',
 ])
 
+checkText(appText, appPath, 'native optional engine status badges', [
+  'engine-row-${engine.status}',
+  'engine-status-badge',
+  "engine.status === 'wired' ? 'Wired' : 'Planned'",
+])
+
 checkText(cssText, cssPath, 'responsive guided flow layout', [
   '.mission-route-radar',
   '.route-status',
