@@ -65,6 +65,15 @@ checkText(appText, appPath, 'sample demo mission tracker', [
   'Start another mission',
 ])
 
+checkText(appText, appPath, 'first-run user path', [
+  'Welcome to NoMeter',
+  'Nothing uploads and desktop saves use your configured folders.',
+  'Guided route',
+  'Simple workbench',
+  'Try sample files',
+  'Open the Exports panel, download browser outputs, and check the saved path for desktop-native jobs.',
+])
+
 checkText(appText, appPath, 'run-or-review behavior', [
   'const missionCanReviewExport = missionHasExports && latestExport !== undefined',
   'const runOrFollowAction = canRunMission',

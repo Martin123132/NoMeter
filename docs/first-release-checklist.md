@@ -17,9 +17,12 @@ Optional installer artifacts may also be included after a successful installer p
 - `NoMeter_<version>_x64-setup.exe` (NSIS installer)
 - `NoMeter_<version>_x64_en-US.msi` (MSI installer)
 
+Use [`installer-packaging.md`](installer-packaging.md) before promoting installer artifacts. Use [`windows-trust.md`](windows-trust.md) before changing unsigned/signed release messaging.
+
 ## Release execution commands (dry run + real run)
 
 - `npm run release:portable -- --artifact-dir <artifact-dir>`
+- `npm run release:installers -- --artifact-dir <artifact-dir> --strict` (only after `npm run desktop:build`, when installers are intended)
 - `npm run release:prepare -- --artifact-dir <artifact-dir>`
 - `npm run release:notes -- --artifact-dir <artifact-dir>`
 - `npm run release:smoke`
@@ -59,7 +62,9 @@ Optional installer artifacts may also be included after a successful installer p
 - [ ] `npm run license:positioning-check` passes so README/package/docs match the non-commercial public licence and commercial-use boundary.
 - [ ] No private local filesystem paths are included in `release-notes.md`.
 - [ ] `checksums.sha256` contains entries for all generated public artifacts.
+- [ ] Optional installer files were copied with `npm run release:installers -- --artifact-dir <artifact-dir> --strict` if installers are included.
 - [ ] `release-provenance.txt` contains commit, branch, timestamp, and runtime/toolchain values.
+- [ ] Unsigned/signed artifact messaging matches [`windows-trust.md`](windows-trust.md).
 - [ ] Evidence files can be verified with local hash commands (`certutil`, `Get-FileHash`, or `sha256sum`) before publish.
 - [ ] GitHub issue template references and release docs agree on release commands and artifacts.
 - [ ] `npm run qa:guided-flow-check` passes so the public build keeps its guided conversion flow, mixed-file switching, and native folder guardrails.

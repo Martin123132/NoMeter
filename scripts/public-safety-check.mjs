@@ -10,7 +10,10 @@ const sharedFiles = [
   'docs/release-readiness.md',
   'docs/first-release-checklist.md',
   'docs/release-dry-run-evidence.md',
+  'docs/first-run.md',
+  'docs/installer-packaging.md',
   'docs/native-engines.md',
+  'docs/windows-trust.md',
   'docs/proof/nometer-folder-e2e.html',
   '.github/ISSUE_TEMPLATE/nometer-release-review.md',
 ]

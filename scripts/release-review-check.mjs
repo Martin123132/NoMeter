@@ -29,6 +29,10 @@ const requirements = [
         pattern: '`npm run release:portable -- --artifact-dir',
       },
       {
+        label: 'Template includes installer artifact command',
+        pattern: '`npm run release:installers -- --artifact-dir',
+      },
+      {
         label: 'Template includes required release:notes command',
         pattern: '`npm run release:notes -- --artifact-dir',
       },
@@ -76,6 +80,10 @@ const requirements = [
         label: 'Template includes public-safe path reminder',
         pattern: 'sanitized',
       },
+      {
+        label: 'Template includes Windows trust messaging check',
+        pattern: 'docs/windows-trust.md',
+      },
     ],
   },
   {
@@ -90,6 +98,10 @@ const requirements = [
       {
         label: 'Readiness doc references portable artifact builder',
         pattern: 'release:portable',
+      },
+      {
+        label: 'Readiness doc references installer artifact collector',
+        pattern: 'release:installers',
       },
       {
         label: 'Readiness doc references release:notes',
@@ -130,6 +142,14 @@ const requirements = [
       {
         label: 'Readiness doc includes public artifact list',
         pattern: 'nometer-static.zip',
+      },
+      {
+        label: 'Readiness doc references installer packaging docs',
+        pattern: 'installer-packaging.md',
+      },
+      {
+        label: 'Readiness doc references Windows trust docs',
+        pattern: 'windows-trust.md',
       },
     ],
   },

@@ -19,6 +19,18 @@ Get-FileHash .\NoMeter_0.5.0_x64-portable.exe -Algorithm SHA256
 Get-FileHash .\nometer-static.zip -Algorithm SHA256
 ```
 
+First run:
+
+1. Launch the portable `.exe`.
+2. Leave `Guided` mode on.
+3. Click `Try sample files`.
+4. Click `Run conversion`.
+5. Open the result from the Exports panel.
+
+Desktop-native jobs also show the saved file path in Exports. Set Work folder and Save folder in the Native pack panel before running your own native jobs.
+
+See [`docs/first-run.md`](docs/first-run.md) for the short user guide and [`docs/windows-trust.md`](docs/windows-trust.md) for the current unsigned-artifact trust model.
+
 ## What this project does
 
 - Convert images in-browser (SVG, PNG, JPG, WebP, GIF, BMP).
@@ -64,6 +76,14 @@ npm run release:portable -- --artifact-dir D:\path\to\artifacts
 - `nometer-static.zip`
 
 Installer builds are still available with `npm run desktop:build`, but the portable artifact path is the preferred first-release route while installer packaging is being hardened.
+
+After a successful installer build, collect installer artifacts with:
+
+```powershell
+npm run release:installers -- --artifact-dir D:\path\to\artifacts --strict
+```
+
+See [`docs/installer-packaging.md`](docs/installer-packaging.md) before including installer files in a public release.
 
 ## Usage guide
 

@@ -1971,16 +1971,16 @@ function App() {
           <section className="first-run-guide" aria-label="NoMeter first run guidance">
             <div className="first-run-intro">
               <h2>Welcome to NoMeter</h2>
-              <p>Choose your style: guided for a warm path, or explorer for open-world freedom.</p>
+              <p>Run the sample path first, or add your own files. Nothing uploads and desktop saves use your configured folders.</p>
             </div>
             <div className="first-run-paths">
               <button type="button" className="ghost-button" onClick={enableGuidedPath}>
                 <Workflow size={14} />
-                Guided path
+                Guided route
               </button>
               <button type="button" className="ghost-button" onClick={enableExplorerPath}>
                 <Sparkles size={14} />
-                Explorer path
+                Simple workbench
               </button>
               <button type="button" className="ghost-button" onClick={openFilePicker}>
                 <UploadCloud size={14} />
@@ -2416,7 +2416,7 @@ function App() {
                 Use <strong>{quickStartHint.output}</strong>. {quickStartHint.focus}
               </li>
               <li>Press Run to process the queue and generate new export rows.</li>
-              <li>Download and copy outputs, noting the saved path for desktop-native jobs.</li>
+              <li>Open the Exports panel, download browser outputs, and check the saved path for desktop-native jobs.</li>
             </ol>
             <div className="quickstart-actions">
               <button type="button" className="ghost-button" onClick={loadSampleFiles}>

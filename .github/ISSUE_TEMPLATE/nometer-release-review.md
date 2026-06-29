@@ -20,6 +20,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 
 - [ ] `npm run release:smoke`
 - [ ] `npm run release:portable -- --artifact-dir <artifact-dir>`
+- [ ] `npm run release:installers -- --artifact-dir <artifact-dir> --strict` (only if installer artifacts are included)
 - [ ] `npm run release:prepare -- --artifact-dir <artifact-dir>`
 - [ ] `npm run release:notes -- --artifact-dir <artifact-dir>`
 - [ ] `npm run release:verify-download` (after publish)
@@ -61,9 +62,11 @@ Preferred evidence log labels (for `release:evidence` defaults):
 ## Sanity checks
 
 - [ ] `checksums.sha256` contains entries for all expected public artifacts.
+- [ ] Optional installer artifacts were copied with `release:installers` if included.
 - [ ] `release-provenance.txt` includes commit, branch, timestamp, and versions.
 - [ ] `release-notes.md` includes generated metadata and checksum table.
 - [ ] Public README/package/release docs match the PolyForm Noncommercial public licence plus commercial-use boundary.
+- [ ] Windows unsigned/signed messaging matches `docs/windows-trust.md`.
 - [ ] Guided flow guard passes for the public UI path.
 - [ ] `release-notes.md` does **not** contain private/local machine paths.
 - [ ] No private files, secrets, or sensitive data are included in release notes or checked-in docs.

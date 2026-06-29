@@ -17,6 +17,9 @@ Optional installer artifacts can also be included when the installer build path 
 - `NoMeter_*.exe` (NSIS installer)
 - `NoMeter_*.msi` (MSI installer)
 
+Installer-specific packaging guidance lives in [Windows installer packaging](installer-packaging.md).
+Unsigned-artifact verification and future signing posture are documented in [Windows trust posture](windows-trust.md).
+
 These are expected in an output directory you control during release prep, typically:
 
 - `D:\...` paths are examples only. In normal practice use `--artifact-dir`.
@@ -30,7 +33,7 @@ These are expected in an output directory you control during release prep, typic
    - `npm run native:doctor`
 2. Build release artifacts:
    - Preferred first-release path: `npm run release:portable -- --artifact-dir <path>`
-   - Optional installer path: `npm run desktop:build`, then copy fresh installer outputs into the selected artifact folder.
+   - Optional installer path: `npm run desktop:build`, then `npm run release:installers -- --artifact-dir <path> --strict`.
    - Verify outputs exist in the selected artifact folder.
 3. Confirm provenance values are documented for the build:
    - commit SHA (`git rev-parse HEAD`)
@@ -62,6 +65,15 @@ This runs (in order):
 - `npm run release:checksums -- --artifact-dir <path>`
 
 If the artifacts already exist and you only need metadata refresh, run `release:prepare` by itself. Use `release:portable` first when you want a fresh portable executable and static web bundle.
+
+For installer rehearsals, run:
+
+```powershell
+npm run desktop:build
+npm run release:installers -- --artifact-dir D:\path\to\artifacts --strict
+```
+
+Then continue with `release:prepare`, `release:notes`, and `release:public-safety-check` against the same artifact folder.
 
 To run in constrained environments (e.g., if you are only validating metadata), use:
 

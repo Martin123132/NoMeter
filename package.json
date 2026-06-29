@@ -20,6 +20,7 @@
     "native:doctor": "node scripts/native-doctor.mjs",
     "release:checksums": "node scripts/release-checksums.mjs",
     "release:provenance": "node scripts/release-provenance.mjs",
+    "release:installers": "node scripts/release-installers.mjs",
     "release:portable": "node scripts/release-portable.mjs",
     "release:prepare": "node scripts/release-prepare.mjs",
     "release:notes": "node scripts/release-notes.mjs",
