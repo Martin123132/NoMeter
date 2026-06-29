@@ -13,6 +13,7 @@ const ffmpegRoot = envValue('NOMETER_FFMPEG_ROOT', 'OPENFORGE_FFMPEG_ROOT') || j
 const pandocRoot = envValue('NOMETER_PANDOC_ROOT', 'OPENFORGE_PANDOC_ROOT') || join(noMeterRoot, 'tools', 'pandoc')
 const qpdfRoot = envValue('NOMETER_QPDF_ROOT', 'OPENFORGE_QPDF_ROOT') || join(noMeterRoot, 'tools', 'qpdf')
 const ghostscriptRoot = envValue('NOMETER_GHOSTSCRIPT_ROOT', 'OPENFORGE_GHOSTSCRIPT_ROOT') || join(noMeterRoot, 'tools', 'ghostscript')
+const ratTrapRoot = envValue('NOMETER_RATTRAP_ROOT', 'OPENFORGE_RATTRAP_ROOT') || join(noMeterRoot, 'tools', 'rat-trap')
 const tesseractRoot = envValue('NOMETER_TESSERACT_ROOT', 'OPENFORGE_TESSERACT_ROOT') || join(noMeterRoot, 'tools', 'tesseract')
 const ocrmypdfRoot = envValue('NOMETER_OCRMYPDF_ROOT', 'OPENFORGE_OCRMYPDF_ROOT') || join(noMeterRoot, 'tools', 'ocrmypdf')
 const pathWithToolchain = existsSync(cargoBin)
@@ -35,6 +36,8 @@ const localFfprobe = findFile(ffmpegRoot, 'ffprobe.exe')
 const localPandoc = findFile(pandocRoot, 'pandoc.exe')
 const localQpdf = findFile(qpdfRoot, 'qpdf.exe')
 const localGhostscript = findFile(ghostscriptRoot, 'gswin64c.exe') || findFile(ghostscriptRoot, 'gs.exe')
+const localRatTrap = envValue('NOMETER_RATTRAP_EXE', 'OPENFORGE_RATTRAP_EXE') || findFile(ratTrapRoot, 'rat-trap.exe')
+const localRatTrapPackage = existsSync(join(ratTrapRoot, 'rat_trap', 'cli.py'))
 const localTesseract = findFile(tesseractRoot, 'tesseract.exe')
 const localOcrmypdf = findFile(ocrmypdfRoot, 'ocrmypdf.exe') || findFile(ocrmypdfRoot, 'ocrmypdf')
 const checks = [
@@ -47,6 +50,7 @@ const checks = [
   { name: 'Pandoc', command: localPandoc || 'pandoc', args: ['--version'], required: false },
   { name: 'qpdf', command: localQpdf || 'qpdf', args: ['--version'], required: false },
   { name: 'Ghostscript', command: localGhostscript || 'gswin64c', args: ['--version'], required: false },
+  ratTrapCheck(),
   { name: 'Tesseract', command: localTesseract || 'tesseract', args: ['--version'], required: false },
   { name: 'OCRmyPDF', command: localOcrmypdf || 'ocrmypdf', args: ['--version'], required: false },
 ]
@@ -61,6 +65,7 @@ console.log(`Cargo home: ${cargoHome}`)
 console.log(`Rustup home: ${rustupHome}`)
 console.log(`Work dir: ${commonEnv.NOMETER_WORK_DIR}`)
 console.log(`Optional Ghostscript root: ${ghostscriptRoot}`)
+console.log(`Optional Rat-Trap root: ${ratTrapRoot}`)
 console.log(`Optional Tesseract root: ${tesseractRoot}`)
 console.log(`Optional OCRmyPDF root: ${ocrmypdfRoot}`)
 
@@ -81,7 +86,7 @@ if (existsSync('src-tauri/tauri.conf.json')) {
 for (const check of checks) {
   const result = spawnSync(check.command, check.args, {
     encoding: 'utf8',
-    env: commonEnv,
+    env: { ...commonEnv, ...(check.env || {}) },
     shell: check.shell ?? false,
   })
   const output = `${result.stdout || ''}${result.stderr || ''}`.trim().split('\n')[0]
@@ -131,6 +136,28 @@ function npmCheck() {
     required: true,
     shell: process.platform === 'win32',
   }
+}
+
+function ratTrapCheck() {
+  if (localRatTrap) {
+    return { name: 'Rat-Trap', command: localRatTrap, args: ['--help'], required: false }
+  }
+
+  if (localRatTrapPackage) {
+    return {
+      name: 'Rat-Trap',
+      command: pythonCommand(),
+      args: ['-m', 'rat_trap.cli', '--help'],
+      env: { PYTHONPATH: ratTrapRoot },
+      required: false,
+    }
+  }
+
+  return { name: 'Rat-Trap', command: 'rat-trap', args: ['--help'], required: false }
+}
+
+function pythonCommand() {
+  return envValue('NOMETER_PYTHON_EXE', 'OPENFORGE_PYTHON_EXE') || (process.platform === 'win32' ? 'python.exe' : 'python')
 }
 
 function envValue(primaryName, legacyName) {

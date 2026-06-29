@@ -107,6 +107,15 @@ checkText(appText, appPath, 'archive zip recipe', [
   "activeTool === 'archive-zip'",
 ])
 
+checkText(appText, appPath, 'Rat-Trap native archive recipe', [
+  "'rat-trap-archive'",
+  "label: 'Rat-Trap GMW'",
+  'Native archive',
+  'compressFilesWithRatTrap(files, nativeFolders)',
+  'Rat-Trap GMW archive',
+  'Install Rat-Trap or set NOMETER_RATTRAP_ROOT/NOMETER_RATTRAP_EXE',
+])
+
 checkText(appText, appPath, 'native folder guardrails', [
   "workDir: 'D:\\\\Codex\\\\OpenForge\\\\work'",
   "outputDir: 'D:\\\\Codex\\\\OpenForge\\\\outputs\\\\converted'",

@@ -38,6 +38,7 @@ import {
 } from './lib/converters'
 import {
   compressPdfFile,
+  compressFilesWithRatTrap,
   convertDocumentFile,
   getNativeCommandPreview,
   getNativeRuntimeStatus,
@@ -56,6 +57,7 @@ type NavId = 'convert' | 'pdf' | 'documents' | 'images' | 'archive' | 'media' | 
 type ToolId =
   | 'image-convert'
   | 'archive-zip'
+  | 'rat-trap-archive'
   | 'pdf-merge'
   | 'pdf-split'
   | 'pdf-optimize'
@@ -164,6 +166,12 @@ const toolOptions: ToolOption[] = [
     icon: Archive,
   },
   {
+    id: 'rat-trap-archive',
+    label: 'Rat-Trap GMW',
+    detail: 'Native archive',
+    icon: Archive,
+  },
+  {
     id: 'pdf-merge',
     label: 'Merge PDFs',
     detail: 'One local PDF',
@@ -213,6 +221,11 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
     source: 'Any local files',
     output: 'Compressed ZIP archive',
     focus: 'Bundle mixed files into one browser-local ZIP without uploading.',
+  },
+  'rat-trap-archive': {
+    source: 'Any local files',
+    output: 'GMW archive',
+    focus: 'Use the optional local Rat-Trap engine in desktop mode.',
   },
   'pdf-merge': {
     source: 'Two or more PDFs',
@@ -365,7 +378,8 @@ function App() {
     (activeTool === 'native-engine' ||
       activeTool === 'document-convert' ||
       activeTool === 'pdf-optimize' ||
-      activeTool === 'pdf-compress') &&
+      activeTool === 'pdf-compress' ||
+      activeTool === 'rat-trap-archive') &&
     !nativeStatus.available
   const missionFolderWarning = requiresDesktopTool(activeTool) ? nativeFolderIssue : null
 
@@ -1297,6 +1311,14 @@ function App() {
       return
     }
 
+    if (activeTool === 'rat-trap-archive' && !nativeStatus.available) {
+      setBanner({
+        tone: 'warning',
+        text: 'Rat-Trap archive compression needs the NoMeter desktop app and a local Rat-Trap install.',
+      })
+      return
+    }
+
     if (requiresDesktopTool(activeTool) && nativeFolderIssue) {
       setBanner({
         tone: 'warning',
@@ -1315,15 +1337,17 @@ function App() {
               ? 'Add PNG, JPG, WebP, GIF, BMP, or SVG files before running image conversion.'
               : activeTool === 'archive-zip'
                 ? 'Add any local files before building a ZIP archive.'
-              : activeTool === 'native-engine'
-                ? 'Add one or more audio or video files before running FFmpeg conversion.'
-                : activeTool === 'document-convert'
-                  ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
-                  : activeTool === 'pdf-optimize'
-                    ? 'Add one or more PDF files before running qpdf optimization.'
-                    : activeTool === 'pdf-compress'
-                      ? 'Add one or more PDF files before running Ghostscript compression.'
-                    : 'Add one or more PDF files before running this PDF job.',
+                : activeTool === 'rat-trap-archive'
+                  ? 'Add any local files before building a Rat-Trap GMW archive.'
+                  : activeTool === 'native-engine'
+                    ? 'Add one or more audio or video files before running FFmpeg conversion.'
+                    : activeTool === 'document-convert'
+                      ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
+                      : activeTool === 'pdf-optimize'
+                        ? 'Add one or more PDF files before running qpdf optimization.'
+                        : activeTool === 'pdf-compress'
+                          ? 'Add one or more PDF files before running Ghostscript compression.'
+                          : 'Add one or more PDF files before running this PDF job.',
       })
       return
     }
@@ -1338,6 +1362,10 @@ function App() {
 
       if (activeTool === 'archive-zip') {
         await runArchiveZip(runnableJobs)
+      }
+
+      if (activeTool === 'rat-trap-archive') {
+        await runRatTrapArchive(runnableJobs)
       }
 
       if (activeTool === 'pdf-merge') {
@@ -1448,6 +1476,53 @@ function App() {
         }),
       )
       setBanner({ tone: 'danger', text: 'ZIP archive creation failed.' })
+    }
+  }
+
+  const runRatTrapArchive = async (compatibleJobs: QueueJob[]) => {
+    compatibleJobs.forEach((job) =>
+      updateJob(job.id, {
+        status: 'running',
+        progress: 36,
+        message: 'Packing files with optional local Rat-Trap',
+      }),
+    )
+
+    try {
+      const files = compatibleJobs.map((job) => job.file)
+      const result = await compressFilesWithRatTrap(files, nativeFolders)
+      const artifact = createArtifact(
+        result.blob,
+        result.name,
+        'Rat-Trap GMW archive',
+        compatibleJobs.length,
+        result.savedPath,
+      )
+      setExports((current) => [artifact, ...current])
+      compatibleJobs.forEach((job) =>
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: nativeOutputMessage(result, 'GMW archive ready'),
+          outputName: result.name,
+        }),
+      )
+      setBanner({
+        tone: 'success',
+        text: `${compatibleJobs.length} file${compatibleJobs.length === 1 ? '' : 's'} packed into ${result.name} with Rat-Trap.`,
+      })
+    } catch (error) {
+      compatibleJobs.forEach((job) =>
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'Rat-Trap archive creation failed.',
+        }),
+      )
+      setBanner({
+        tone: 'danger',
+        text: 'Rat-Trap archive creation failed. Install Rat-Trap or set NOMETER_RATTRAP_ROOT/NOMETER_RATTRAP_EXE.',
+      })
     }
   }
 
@@ -2701,6 +2776,11 @@ function App() {
                   <AudioWaveform size={18} />
                   <span>MP4 H.264</span>
                 </div>
+              ) : activeTool === 'rat-trap-archive' ? (
+                <div className="pdf-output">
+                  <Archive size={18} />
+                  <span>GMW archive</span>
+                </div>
               ) : activeTool === 'pdf-optimize' ? (
                 <div className="pdf-output">
                   <CheckCircle2 size={18} />
@@ -3067,6 +3147,7 @@ function inferMissionTool(jobs: QueueJob[]): ToolId | null {
 
 function isCompatibleForTool(job: QueueJob, tool: ToolId) {
   if (tool === 'archive-zip') return true
+  if (tool === 'rat-trap-archive') return true
   if (tool === 'native-engine') return job.kind === 'media'
   if (tool === 'document-convert') return job.kind === 'document'
   if (tool === 'pdf-optimize') return job.kind === 'pdf'
@@ -3143,7 +3224,13 @@ function isCDrivePath(value: string) {
 }
 
 function requiresDesktopTool(tool: ToolId) {
-  return tool === 'native-engine' || tool === 'document-convert' || tool === 'pdf-optimize' || tool === 'pdf-compress'
+  return (
+    tool === 'native-engine' ||
+    tool === 'document-convert' ||
+    tool === 'pdf-optimize' ||
+    tool === 'pdf-compress' ||
+    tool === 'rat-trap-archive'
+  )
 }
 
 function nativeOutputMessage(result: NativeTranscodeResult, fallback: string) {

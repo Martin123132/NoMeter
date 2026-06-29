@@ -46,6 +46,20 @@ struct PdfCompressRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct RatTrapArchiveRequest {
+    files: Vec<NativeInputFile>,
+    folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeInputFile {
+    file_name: String,
+    bytes_base64: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct NativeFolders {
     work_dir: Option<String>,
     output_dir: Option<String>,
@@ -292,6 +306,85 @@ async fn compress_pdf_with_ghostscript(request: PdfCompressRequest) -> Result<Na
 }
 
 #[tauri::command]
+async fn compress_files_with_rat_trap(request: RatTrapArchiveRequest) -> Result<NativeArtifact, String> {
+    if request.files.is_empty() {
+        return Err("Add at least one file before running Rat-Trap compression.".into());
+    }
+
+    let rat_trap = rat_trap_command_spec()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    let input_dir = job_dir.join("input");
+    fs::create_dir_all(&input_dir)
+        .map_err(|error| format!("Could not create Rat-Trap input folder: {error}"))?;
+
+    for file in &request.files {
+        let input_bytes = general_purpose::STANDARD
+            .decode(file.bytes_base64.as_bytes())
+            .map_err(|error| format!("Could not decode Rat-Trap input: {error}"))?;
+
+        if input_bytes.is_empty() {
+            continue;
+        }
+
+        let file_path = unique_output_path(&input_dir, &sanitize_file_name(&file.file_name));
+        fs::write(&file_path, input_bytes)
+            .map_err(|error| format!("Could not write Rat-Trap input file: {error}"))?;
+    }
+
+    let output_name = if request.files.len() == 1 {
+        format!("{}-rat-trap.gmw", safe_stem(&request.files[0].file_name))
+    } else {
+        "nometer-rat-trap.gmw".into()
+    };
+    let output_path = job_dir.join(&output_name);
+    let input_arg = input_dir
+        .to_str()
+        .ok_or_else(|| "Rat-Trap input path contains unsupported characters.".to_string())?;
+    let output_arg = output_path
+        .to_str()
+        .ok_or_else(|| "Rat-Trap output path contains unsupported characters.".to_string())?;
+
+    let mut command = Command::new(&rat_trap.executable);
+    command.current_dir(&job_dir);
+    command.args(&rat_trap.prefix_args);
+    command.args(["compress", input_arg, output_arg, "--zstd-level", "3"]);
+    for (name, value) in &rat_trap.env {
+        command.env(name, value);
+    }
+
+    let output = command.output().map_err(|error| {
+        format!(
+            "Rat-Trap is unavailable: {error}. Install Rat-Trap or set NOMETER_RATTRAP_EXE/NOMETER_RATTRAP_ROOT."
+        )
+    })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let log = compact_log(&format!("{stdout}\n{stderr}"));
+
+    if !output.status.success() {
+        return Err(format!(
+            "Rat-Trap failed with status {:?}: {log}",
+            output.status.code()
+        ));
+    }
+
+    let output_bytes = fs::read(&output_path)
+        .map_err(|error| format!("Could not read Rat-Trap output archive: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "application/octet-stream".into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+        saved_path,
+    })
+}
+
+#[tauri::command]
 async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Result<NativeArtifact, String> {
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
@@ -366,6 +459,12 @@ struct DocumentOutputConfig {
     standalone: bool,
 }
 
+struct ExternalCommandSpec {
+    executable: String,
+    prefix_args: Vec<String>,
+    env: Vec<(String, String)>,
+}
+
 fn document_output_config(format: &str) -> Option<DocumentOutputConfig> {
     match format {
         "html" => Some(DocumentOutputConfig {
@@ -431,6 +530,81 @@ fn ghostscript_command() -> Result<String, String> {
     }
 
     Ok(default_ghostscript_command().into())
+}
+
+fn rat_trap_command_spec() -> Result<ExternalCommandSpec, String> {
+    for env_name in ["NOMETER_RATTRAP_EXE", "OPENFORGE_RATTRAP_EXE"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let path = PathBuf::from(trimmed);
+            if !path.is_absolute() {
+                return Err(format!("{env_name} must be an absolute executable path."));
+            }
+            if !path.exists() {
+                return Err(format!("{env_name} does not exist: {trimmed}"));
+            }
+
+            return Ok(ExternalCommandSpec {
+                executable: path.to_string_lossy().to_string(),
+                prefix_args: Vec::new(),
+                env: Vec::new(),
+            });
+        }
+    }
+
+    for root in rat_trap_roots() {
+        let package_dir = root.join("rat_trap");
+        if package_dir.join("cli.py").exists() {
+            return Ok(ExternalCommandSpec {
+                executable: python_command(),
+                prefix_args: vec!["-m".into(), "rat_trap.cli".into()],
+                env: vec![("PYTHONPATH".into(), root.to_string_lossy().to_string())],
+            });
+        }
+    }
+
+    Ok(ExternalCommandSpec {
+        executable: "rat-trap".into(),
+        prefix_args: Vec::new(),
+        env: Vec::new(),
+    })
+}
+
+fn rat_trap_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for env_name in ["NOMETER_RATTRAP_ROOT", "OPENFORGE_RATTRAP_ROOT"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                roots.push(PathBuf::from(trimmed));
+            }
+        }
+    }
+
+    roots.push(
+        PathBuf::from(r"D:\Codex\OpenForge")
+            .join("tools")
+            .join("rat-trap"),
+    );
+    roots
+}
+
+fn python_command() -> String {
+    for env_name in ["NOMETER_PYTHON_EXE", "OPENFORGE_PYTHON_EXE"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                return trimmed.into();
+            }
+        }
+    }
+
+    "python".into()
 }
 
 fn ghostscript_roots() -> Vec<PathBuf> {
@@ -716,7 +890,8 @@ fn main() {
             transcode_media,
             convert_document,
             optimize_pdf,
-            compress_pdf_with_ghostscript
+            compress_pdf_with_ghostscript,
+            compress_files_with_rat_trap
         ])
         .run(tauri::generate_context!())
         .expect("error while running NoMeter");

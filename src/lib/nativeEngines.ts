@@ -1,4 +1,4 @@
-export type NativeEngineId = 'ffmpeg' | 'pandoc' | 'qpdf' | 'ghostscript' | 'ocrmypdf' | 'tesseract'
+export type NativeEngineId = 'ffmpeg' | 'pandoc' | 'qpdf' | 'ghostscript' | 'rattrap' | 'ocrmypdf' | 'tesseract'
 
 export type NativeEngine = {
   id: NativeEngineId
@@ -60,6 +60,14 @@ export const nativeEngineCatalog: NativeEngine[] = [
     role: 'optional local PDF compression',
     command: 'gswin64c',
     sidecarName: 'local Ghostscript',
+    status: 'optional',
+  },
+  {
+    id: 'rattrap',
+    name: 'Rat-Trap',
+    role: 'optional local GMW archive compression',
+    command: 'rat-trap',
+    sidecarName: 'local Rat-Trap',
     status: 'optional',
   },
   {
@@ -239,6 +247,38 @@ export async function compressPdfFile(file: File, folders?: NativeFolders): Prom
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
       preset: 'ebook',
+      folders: normalizeNativeFolders(folders),
+    },
+  })
+
+  return {
+    name: artifact.name,
+    blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
+    log: artifact.log,
+    savedPath: artifact.savedPath,
+  }
+}
+
+export async function compressFilesWithRatTrap(files: File[], folders?: NativeFolders): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Rat-Trap archive compression requires the NoMeter desktop app.')
+  }
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  const artifact = await invoke<{
+    name: string
+    mimeType: string
+    bytesBase64: string
+    log: string
+    savedPath?: string
+  }>('compress_files_with_rat_trap', {
+    request: {
+      files: await Promise.all(
+        files.map(async (file) => ({
+          fileName: file.name,
+          bytesBase64: await fileToBase64(file),
+        })),
+      ),
       folders: normalizeNativeFolders(folders),
     },
   })
