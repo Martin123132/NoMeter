@@ -33,6 +33,7 @@ checkFileContains(checklistPath, 'first release command requirements', [
   'npm run release:portable -- --artifact-dir <artifact-dir>',
   'npm run release:notes -- --artifact-dir <artifact-dir>',
   'npm run release:smoke',
+  'npm run release:verify-download',
   'npm run release:review-check',
   'npm run ci:maintenance-check',
   'npm run license:positioning-check',
@@ -136,6 +137,7 @@ checkFileContains(gitignorePath, 'local generated output ignore coverage', [
 checkFileContains(packageJsonPath, 'package script coverage', [
   '"release:evidence": "node scripts/release-evidence.mjs"',
   '"release:portable": "node scripts/release-portable.mjs"',
+  '"release:verify-download": "node scripts/release-verify-download.mjs"',
   '"release:evidence:run": "node scripts/release-evidence-run.mjs"',
   '"release:evidence-index": "node scripts/release-evidence-index.mjs"',
   '"release:evidence:cleanup": "node scripts/release-evidence-cleanup.mjs"',

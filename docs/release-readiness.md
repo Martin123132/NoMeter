@@ -121,6 +121,28 @@ The command fails if it cannot produce:
 - `tmp/release-smoke-artifacts/checksums.sha256`
 - `tmp/release-smoke-artifacts/release-notes.md`
 
+## Public release download verification
+
+After publishing a release, verify the public GitHub assets by downloading them into a local ignored folder and checking their hashes/provenance:
+
+```powershell
+npm run release:verify-download
+```
+
+For a specific release:
+
+```powershell
+npm run release:verify-download -- --tag v0.5.0 --version 0.5.0
+```
+
+This verifies:
+
+- the release tag target matches the GitHub tag ref,
+- required assets download successfully,
+- `checksums.sha256` matches downloaded artifacts,
+- GitHub asset SHA-256 digests match when GitHub provides them,
+- and `release-provenance.txt` matches the release version, commit, and clean build state.
+
 ## Release dry-run evidence index
 
 Before final review, capture all required validation evidence in one file:

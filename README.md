@@ -6,6 +6,19 @@ NoMeter is a **source-available, local-first conversion toolbox** for browser an
 
 Commercial use requires a separate written license from TWO HANDS NETWORK LTD. That includes resale, paid products, hosted/SaaS/API services, managed services, enterprise products, commercial developer tools, commercial AI systems, and commercial AI training/evaluation pipelines.
 
+## Download
+
+Latest release: [`v0.5.0`](https://github.com/Martin123132/NoMeter/releases/tag/v0.5.0)
+
+- Use `NoMeter_0.5.0_x64-portable.exe` for the Windows desktop app.
+- Use `nometer-static.zip` for browser/static hosting or inspection.
+- Download `checksums.sha256` and verify hashes before running release artifacts.
+
+```powershell
+Get-FileHash .\NoMeter_0.5.0_x64-portable.exe -Algorithm SHA256
+Get-FileHash .\nometer-static.zip -Algorithm SHA256
+```
+
 ## What this project does
 
 - Convert images in-browser (SVG, PNG, JPG, WebP, GIF, BMP).
@@ -104,6 +117,7 @@ For CI-safe verification in developer workflows:
 
 ```powershell
 npm run release:smoke
+npm run release:verify-download
 ```
 
 Optional flags are available for local-only runs (for example `--skip-build`, `--skip-doctor`, `--non-strict`).

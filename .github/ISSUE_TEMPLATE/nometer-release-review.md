@@ -22,6 +22,7 @@ Use this checklist for the first public release review. Keep all linked artifact
 - [ ] `npm run release:portable -- --artifact-dir <artifact-dir>`
 - [ ] `npm run release:prepare -- --artifact-dir <artifact-dir>`
 - [ ] `npm run release:notes -- --artifact-dir <artifact-dir>`
+- [ ] `npm run release:verify-download` (after publish)
 - [ ] `npm run license:positioning-check`
 - [ ] `npm run qa:guided-flow-check`
 - [ ] `npm run lint`

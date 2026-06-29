@@ -23,6 +23,7 @@ Optional installer artifacts may also be included after a successful installer p
 - `npm run release:prepare -- --artifact-dir <artifact-dir>`
 - `npm run release:notes -- --artifact-dir <artifact-dir>`
 - `npm run release:smoke`
+- `npm run release:verify-download`
 - `npm run release:review-check`
 - `npm run ci:maintenance-check`
 - `npm run license:positioning-check`
@@ -65,6 +66,7 @@ Optional installer artifacts may also be included after a successful installer p
 - [ ] `npm run release:public-safety-check` passes before any release-facing material is shared.
 - [ ] Evidence-run logs are treated as local-only output; run `npm run release:evidence:cleanup` before sharing or archiving evidence bundles.
 - [ ] Generated `outputs/` artifacts and `tmp/` logs remain local-only and uncommitted.
+- [ ] After publishing, `npm run release:verify-download` passes against the public GitHub release assets.
 
 ## Evidence log hygiene (pre-share)
 

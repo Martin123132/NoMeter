@@ -24,6 +24,7 @@
     "release:prepare": "node scripts/release-prepare.mjs",
     "release:notes": "node scripts/release-notes.mjs",
     "release:smoke": "node scripts/release-smoke.mjs",
+    "release:verify-download": "node scripts/release-verify-download.mjs",
     "release:review-check": "node scripts/release-review-check.mjs",
     "release:evidence": "node scripts/release-evidence.mjs",
     "release:evidence:run": "node scripts/release-evidence-run.mjs",

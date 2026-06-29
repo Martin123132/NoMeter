@@ -33,6 +33,10 @@ const requirements = [
         pattern: '`npm run release:notes -- --artifact-dir',
       },
       {
+        label: 'Template includes post-publish download verification',
+        pattern: '`npm run release:verify-download`',
+      },
+      {
         label: 'Template includes native doctor verification',
         pattern: '`npm run native:doctor`',
       },
