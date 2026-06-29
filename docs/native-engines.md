@@ -9,7 +9,7 @@ NoMeter's browser MVP already handles image conversion, ZIP bundling, PDF merge,
 | FFmpeg | Audio/video conversion, extraction, GIF/video workflows | Wired |
 | Pandoc | Documents, Markdown, HTML, DOCX, ODT | Wired |
 | qpdf | PDF repair, linearization, structural operations | Wired |
-| Ghostscript | PDF compression and rasterization | Planned optional engine |
+| Ghostscript | PDF compression through local `pdfwrite` | Optional local engine |
 | OCRmyPDF | Searchable scanned PDFs | Planned optional engine |
 | Tesseract | OCR text recognition | Planned optional engine |
 
@@ -51,9 +51,9 @@ Run:
 npm.cmd run native:doctor
 ```
 
-to verify prerequisites. Ghostscript, Tesseract, and OCRmyPDF are expected warnings until their adapters are added.
+to verify prerequisites. Tesseract and OCRmyPDF are expected warnings until their adapters are added. Ghostscript is optional: it is usable when `native:doctor` can find `gswin64c`, `gs`, or an explicit `NOMETER_GHOSTSCRIPT_EXE`.
 
-`native:doctor` checks the optional engine roots above before falling back to `PATH`. Passing optional checks means the tool is discoverable on the developer machine; it does not mean the corresponding NoMeter adapter is wired yet. The UI marks these engines as `Planned` until a native command, sidecar policy, and sample/fixture path exist.
+`native:doctor` checks the optional engine roots above before falling back to `PATH`. Passing optional checks means the tool is discoverable on the developer machine. The UI marks Ghostscript as `Optional` and keeps Tesseract/OCRmyPDF as `Planned` until their native commands, sidecar policy, and sample/fixture paths exist.
 
 Build the preferred portable release artifacts with:
 
@@ -77,9 +77,11 @@ The current Pandoc adapter accepts a document `File`, writes it to the configure
 
 The current qpdf adapter accepts a PDF `File`, writes it to the configured work folder, runs the bundled qpdf sidecar, copies the output to the configured save folder, and returns a repaired, compressed, linearized PDF.
 
+The current Ghostscript adapter accepts a PDF `File`, writes it to the configured work folder, runs a locally installed Ghostscript executable with a controlled `pdfwrite` compression preset, copies the output to the configured save folder, and returns a compressed PDF. It does not bundle Ghostscript.
+
 ## Planned OCR/PDF Engine Rules
 
-Before Ghostscript, Tesseract, or OCRmyPDF is promoted from `Planned` to `Wired`:
+Before Tesseract or OCRmyPDF is promoted from `Planned` to `Wired`, or before Ghostscript is promoted from optional-local to bundled:
 
 - Add a dedicated Tauri command with structured arguments.
 - Add sidecar or local-tool discovery rules.

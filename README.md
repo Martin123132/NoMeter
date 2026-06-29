@@ -41,6 +41,7 @@ See [`docs/first-run.md`](docs/first-run.md) for the short user guide and [`docs
   - FFmpeg: media transcoding to MP4.
   - Pandoc: document output to HTML, DOCX, Markdown, EPUB.
   - qpdf: PDF repair/compression/linearization.
+  - Ghostscript: optional local PDF compression when installed/configured.
 - Configure native work and save directories (with defaults that can be set to avoid system-drive usage).
 
 ## Quick start
@@ -148,7 +149,8 @@ See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md)
 
 - Browser core is stable (images/ZIP/PDF merge/split).
 - Native engine adapters (FFmpeg, Pandoc, qpdf) are wired and queue-integrated.
-- Remaining roadmap focuses on installer hardening, OCR support, and richer document formats.
+- Ghostscript PDF compression is available as an optional local desktop engine.
+- Remaining roadmap focuses on OCR support and richer document formats.
 
 Full roadmap details live in [`ROADMAP.md`](ROADMAP.md).
 

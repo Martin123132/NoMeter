@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::{
     fs,
     path::{Path, PathBuf},
+    process::Command,
     time::{SystemTime, UNIX_EPOCH},
 };
 use tauri::AppHandle;
@@ -31,6 +32,15 @@ struct DocumentConvertRequest {
 struct PdfOptimizeRequest {
     file_name: String,
     bytes_base64: String,
+    folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PdfCompressRequest {
+    file_name: String,
+    bytes_base64: String,
+    preset: Option<String>,
     folders: Option<NativeFolders>,
 }
 
@@ -205,6 +215,83 @@ async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<Nat
 }
 
 #[tauri::command]
+async fn compress_pdf_with_ghostscript(request: PdfCompressRequest) -> Result<NativeArtifact, String> {
+    let input_bytes = general_purpose::STANDARD
+        .decode(request.bytes_base64.as_bytes())
+        .map_err(|error| format!("Could not decode PDF input: {error}"))?;
+
+    if input_bytes.is_empty() {
+        return Err("The selected PDF file was empty.".into());
+    }
+
+    let preset = ghostscript_pdf_preset(request.preset.as_deref())?;
+    let ghostscript = ghostscript_command()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
+
+    let stem = safe_stem(&request.file_name);
+    let output_name = format!("{stem}-compressed.pdf");
+    let input_path = job_dir.join("input.pdf");
+    let output_path = job_dir.join(&output_name);
+
+    fs::write(&input_path, input_bytes).map_err(|error| format!("Could not write PDF input: {error}"))?;
+
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "Input path contains unsupported characters.".to_string())?;
+    let output_arg = output_path
+        .to_str()
+        .ok_or_else(|| "Output path contains unsupported characters.".to_string())?;
+
+    let output = Command::new(&ghostscript)
+        .current_dir(&job_dir)
+        .args([
+            "-dSAFER",
+            "-dBATCH",
+            "-dNOPAUSE",
+            "-sDEVICE=pdfwrite",
+            "-dCompatibilityLevel=1.7",
+            "-dDetectDuplicateImages=true",
+            "-dCompressFonts=true",
+            "-dCompressStreams=true",
+        ])
+        .arg(format!("-dPDFSETTINGS={preset}"))
+        .arg(format!("-sOutputFile={output_arg}"))
+        .arg(input_arg)
+        .output()
+        .map_err(|error| {
+            format!(
+                "Ghostscript is unavailable: {error}. Install Ghostscript or set NOMETER_GHOSTSCRIPT_EXE/NOMETER_GHOSTSCRIPT_ROOT."
+            )
+        })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let log = compact_log(&format!("{stdout}\n{stderr}"));
+
+    if !output.status.success() {
+        return Err(format!(
+            "Ghostscript failed with status {:?}: {log}",
+            output.status.code()
+        ));
+    }
+
+    let output_bytes =
+        fs::read(&output_path).map_err(|error| format!("Could not read Ghostscript output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "application/pdf".into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+        saved_path,
+    })
+}
+
+#[tauri::command]
 async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Result<NativeArtifact, String> {
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
@@ -303,6 +390,107 @@ fn document_output_config(format: &str) -> Option<DocumentOutputConfig> {
         }),
         _ => None,
     }
+}
+
+fn ghostscript_pdf_preset(value: Option<&str>) -> Result<&'static str, String> {
+    match value.unwrap_or("ebook").trim().to_ascii_lowercase().as_str() {
+        "screen" => Ok("/screen"),
+        "ebook" => Ok("/ebook"),
+        "printer" => Ok("/printer"),
+        "prepress" => Ok("/prepress"),
+        "default" => Ok("/default"),
+        other => Err(format!("Unsupported Ghostscript PDF preset: {other}")),
+    }
+}
+
+fn ghostscript_command() -> Result<String, String> {
+    for env_name in ["NOMETER_GHOSTSCRIPT_EXE", "OPENFORGE_GHOSTSCRIPT_EXE"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let path = PathBuf::from(trimmed);
+            if !path.is_absolute() {
+                return Err(format!("{env_name} must be an absolute executable path."));
+            }
+            if !path.exists() {
+                return Err(format!("{env_name} does not exist: {trimmed}"));
+            }
+
+            return Ok(path.to_string_lossy().to_string());
+        }
+    }
+
+    let names = ghostscript_executable_names();
+    for root in ghostscript_roots() {
+        if let Some(path) = find_first_named_file(&root, &names, 0) {
+            return Ok(path.to_string_lossy().to_string());
+        }
+    }
+
+    Ok(default_ghostscript_command().into())
+}
+
+fn ghostscript_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for env_name in ["NOMETER_GHOSTSCRIPT_ROOT", "OPENFORGE_GHOSTSCRIPT_ROOT"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                roots.push(PathBuf::from(trimmed));
+            }
+        }
+    }
+
+    roots.push(PathBuf::from(r"D:\Codex\OpenForge").join("tools").join("ghostscript"));
+    roots
+}
+
+#[cfg(windows)]
+fn ghostscript_executable_names() -> Vec<&'static str> {
+    vec!["gswin64c.exe", "gswin32c.exe", "gs.exe", "gswin64c", "gswin32c", "gs"]
+}
+
+#[cfg(not(windows))]
+fn ghostscript_executable_names() -> Vec<&'static str> {
+    vec!["gs"]
+}
+
+#[cfg(windows)]
+fn default_ghostscript_command() -> &'static str {
+    "gswin64c"
+}
+
+#[cfg(not(windows))]
+fn default_ghostscript_command() -> &'static str {
+    "gs"
+}
+
+fn find_first_named_file(root: &Path, names: &[&str], depth: usize) -> Option<PathBuf> {
+    if depth > 6 || !root.exists() {
+        return None;
+    }
+
+    let entries = fs::read_dir(root).ok()?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let file_name = path.file_name().and_then(|value| value.to_str()).unwrap_or("");
+
+        if path.is_file() && names.iter().any(|name| file_name.eq_ignore_ascii_case(name)) {
+            return Some(path);
+        }
+
+        if path.is_dir() {
+            if let Some(match_path) = find_first_named_file(&path, names, depth + 1) {
+                return Some(match_path);
+            }
+        }
+    }
+
+    None
 }
 
 fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String> {
@@ -527,7 +715,8 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             transcode_media,
             convert_document,
-            optimize_pdf
+            optimize_pdf,
+            compress_pdf_with_ghostscript
         ])
         .run(tauri::generate_context!())
         .expect("error while running NoMeter");

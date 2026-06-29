@@ -37,6 +37,7 @@ import {
   type ImageFormat,
 } from './lib/converters'
 import {
+  compressPdfFile,
   convertDocumentFile,
   getNativeCommandPreview,
   getNativeRuntimeStatus,
@@ -58,6 +59,7 @@ type ToolId =
   | 'pdf-merge'
   | 'pdf-split'
   | 'pdf-optimize'
+  | 'pdf-compress'
   | 'document-convert'
   | 'native-engine'
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
@@ -176,7 +178,13 @@ const toolOptions: ToolOption[] = [
   {
     id: 'pdf-optimize',
     label: 'Optimize PDFs',
-    detail: 'Repair, compress, linearize',
+    detail: 'Repair, linearize',
+    icon: FileText,
+  },
+  {
+    id: 'pdf-compress',
+    label: 'Compress PDFs',
+    detail: 'Ghostscript optional',
     icon: FileText,
   },
   {
@@ -217,9 +225,14 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
     focus: 'Add one PDF and run split to inspect each page package.',
   },
   'pdf-optimize': {
-    source: 'PDFs that need repair or compression',
+    source: 'PDFs that need repair or linearization',
     output: 'Optimized PDF',
     focus: 'Use the native qpdf path in desktop mode for reliable results.',
+  },
+  'pdf-compress': {
+    source: 'PDFs that need smaller file size',
+    output: 'Compressed PDF',
+    focus: 'Use the optional local Ghostscript path in desktop mode.',
   },
   'document-convert': {
     source: 'Markdown, HTML, DOCX, ODT, RTF, or text',
@@ -349,7 +362,10 @@ function App() {
   const missionHasRunningJobs = jobs.some((job) => job.status === 'running')
   const missionRoundCompleted = jobs.length > 0 && !missionHasReadyJobs && !missionHasRunningJobs
   const missionNativeUnavailable =
-    (activeTool === 'native-engine' || activeTool === 'document-convert' || activeTool === 'pdf-optimize') &&
+    (activeTool === 'native-engine' ||
+      activeTool === 'document-convert' ||
+      activeTool === 'pdf-optimize' ||
+      activeTool === 'pdf-compress') &&
     !nativeStatus.available
   const missionFolderWarning = requiresDesktopTool(activeTool) ? nativeFolderIssue : null
 
@@ -1273,6 +1289,14 @@ function App() {
       return
     }
 
+    if (activeTool === 'pdf-compress' && !nativeStatus.available) {
+      setBanner({
+        tone: 'warning',
+        text: 'Ghostscript compression needs the NoMeter desktop app and a local Ghostscript install.',
+      })
+      return
+    }
+
     if (requiresDesktopTool(activeTool) && nativeFolderIssue) {
       setBanner({
         tone: 'warning',
@@ -1297,6 +1321,8 @@ function App() {
                   ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
                   : activeTool === 'pdf-optimize'
                     ? 'Add one or more PDF files before running qpdf optimization.'
+                    : activeTool === 'pdf-compress'
+                      ? 'Add one or more PDF files before running Ghostscript compression.'
                     : 'Add one or more PDF files before running this PDF job.',
       })
       return
@@ -1324,6 +1350,10 @@ function App() {
 
       if (activeTool === 'pdf-optimize') {
         await runPdfOptimize(runnableJobs)
+      }
+
+      if (activeTool === 'pdf-compress') {
+        await runPdfCompress(runnableJobs)
       }
 
       if (activeTool === 'native-engine') {
@@ -1535,6 +1565,45 @@ function App() {
         completed > 0
           ? `${completed} PDF${completed === 1 ? '' : 's'} optimized with qpdf.`
           : 'No qpdf exports were created.',
+    })
+  }
+
+  const runPdfCompress = async (compatibleJobs: QueueJob[]) => {
+    let completed = 0
+
+    for (const job of compatibleJobs) {
+      updateJob(job.id, {
+        status: 'running',
+        progress: 34,
+        message: 'Compressing with optional local Ghostscript',
+      })
+
+      try {
+        const result = await compressPdfFile(job.file, nativeFolders)
+        const artifact = createArtifact(result.blob, result.name, 'Ghostscript compression', 1, result.savedPath)
+        setExports((current) => [artifact, ...current])
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: nativeOutputMessage(result, 'compressed PDF ready'),
+          outputName: result.name,
+        })
+        completed += 1
+      } catch (error) {
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'Ghostscript compression failed.',
+        })
+      }
+    }
+
+    setBanner({
+      tone: completed > 0 ? 'success' : 'danger',
+      text:
+        completed > 0
+          ? `${completed} PDF${completed === 1 ? '' : 's'} compressed with Ghostscript.`
+          : 'No Ghostscript exports were created. Install Ghostscript or set NOMETER_GHOSTSCRIPT_ROOT.',
     })
   }
 
@@ -2637,6 +2706,11 @@ function App() {
                   <CheckCircle2 size={18} />
                   <span>Optimized PDF</span>
                 </div>
+              ) : activeTool === 'pdf-compress' ? (
+                <div className="pdf-output">
+                  <CheckCircle2 size={18} />
+                  <span>Compressed PDF</span>
+                </div>
               ) : activeTool === 'archive-zip' ? (
                 <div className="pdf-output">
                   <Archive size={18} />
@@ -2753,7 +2827,7 @@ function App() {
                       <span className="engine-heading">
                         <strong>{engine.name}</strong>
                         <span className={`engine-status-badge engine-status-badge-${engine.status}`}>
-                          {engine.status === 'wired' ? 'Wired' : 'Planned'}
+                          {engine.status === 'wired' ? 'Wired' : engine.status === 'optional' ? 'Optional' : 'Planned'}
                         </span>
                       </span>
                       <small>{engine.role}</small>
@@ -2996,6 +3070,7 @@ function isCompatibleForTool(job: QueueJob, tool: ToolId) {
   if (tool === 'native-engine') return job.kind === 'media'
   if (tool === 'document-convert') return job.kind === 'document'
   if (tool === 'pdf-optimize') return job.kind === 'pdf'
+  if (tool === 'pdf-compress') return job.kind === 'pdf'
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'
   return false
@@ -3068,7 +3143,7 @@ function isCDrivePath(value: string) {
 }
 
 function requiresDesktopTool(tool: ToolId) {
-  return tool === 'native-engine' || tool === 'document-convert' || tool === 'pdf-optimize'
+  return tool === 'native-engine' || tool === 'document-convert' || tool === 'pdf-optimize' || tool === 'pdf-compress'
 }
 
 function nativeOutputMessage(result: NativeTranscodeResult, fallback: string) {

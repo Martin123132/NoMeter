@@ -123,7 +123,16 @@ checkText(appText, appPath, 'native folder guardrails', [
 checkText(appText, appPath, 'native optional engine status badges', [
   'engine-row-${engine.status}',
   'engine-status-badge',
-  "engine.status === 'wired' ? 'Wired' : 'Planned'",
+  "engine.status === 'wired' ? 'Wired' : engine.status === 'optional' ? 'Optional' : 'Planned'",
+])
+
+checkText(appText, appPath, 'Ghostscript PDF compression route', [
+  "'pdf-compress'",
+  "label: 'Compress PDFs'",
+  'Ghostscript optional',
+  'compressPdfFile(job.file, nativeFolders)',
+  'Ghostscript compression',
+  'Install Ghostscript or set NOMETER_GHOSTSCRIPT_ROOT',
 ])
 
 checkText(cssText, cssPath, 'responsive guided flow layout', [

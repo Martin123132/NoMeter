@@ -6,7 +6,7 @@ export type NativeEngine = {
   role: string
   command: string
   sidecarName: string
-  status: 'planned' | 'wired'
+  status: 'planned' | 'wired' | 'optional'
 }
 
 export type NativeRuntimeStatus = {
@@ -57,10 +57,10 @@ export const nativeEngineCatalog: NativeEngine[] = [
   {
     id: 'ghostscript',
     name: 'Ghostscript',
-    role: 'planned PDF compression/rasterization',
+    role: 'optional local PDF compression',
     command: 'gswin64c',
-    sidecarName: 'ghostscript',
-    status: 'planned',
+    sidecarName: 'local Ghostscript',
+    status: 'optional',
   },
   {
     id: 'ocrmypdf',
@@ -127,7 +127,9 @@ export async function pickNativeFolder(defaultPath?: string): Promise<string | n
 }
 
 export function getNativeCommandPreview(engine: NativeEngine) {
-  return `${engine.command} via ${engine.sidecarName} ${engine.status === 'wired' ? 'sidecar' : 'planned sidecar'}`
+  if (engine.status === 'wired') return `${engine.command} via ${engine.sidecarName} sidecar`
+  if (engine.status === 'optional') return `${engine.command} via ${engine.sidecarName}`
+  return `${engine.command} via ${engine.sidecarName} planned sidecar`
 }
 
 export async function transcodeMediaFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
@@ -208,6 +210,35 @@ export async function optimizePdfFile(file: File, folders?: NativeFolders): Prom
     request: {
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
+      folders: normalizeNativeFolders(folders),
+    },
+  })
+
+  return {
+    name: artifact.name,
+    blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
+    log: artifact.log,
+    savedPath: artifact.savedPath,
+  }
+}
+
+export async function compressPdfFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Ghostscript PDF compression requires the NoMeter desktop app.')
+  }
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  const artifact = await invoke<{
+    name: string
+    mimeType: string
+    bytesBase64: string
+    log: string
+    savedPath?: string
+  }>('compress_pdf_with_ghostscript', {
+    request: {
+      fileName: file.name,
+      bytesBase64: await fileToBase64(file),
+      preset: 'ebook',
       folders: normalizeNativeFolders(folders),
     },
   })

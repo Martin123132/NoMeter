@@ -2834,6 +2834,12 @@
   border: 1px solid rgba(8, 145, 168, 0.3);
 }
 
+.engine-status-badge-optional {
+  color: #1d5a9b;
+  background: #edf4ff;
+  border: 1px solid rgba(39, 89, 168, 0.28);
+}
+
 .engine-status-badge-planned {
   color: #77531a;
   background: #fff2dc;
