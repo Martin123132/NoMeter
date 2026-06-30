@@ -434,6 +434,36 @@ async fn extract_rat_trap_archive(request: RatTrapSingleArchiveRequest) -> Resul
 }
 
 #[tauri::command]
+async fn inspect_rat_trap_archive(request: RatTrapSingleArchiveRequest) -> Result<NativeArtifact, String> {
+    let rat_trap = rat_trap_command_spec()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create Rat-Trap work folder: {error}"))?;
+
+    let input_path = write_rat_trap_archive_input(&request, &job_dir)?;
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "Rat-Trap archive path contains unsupported characters.".to_string())?;
+    let log = run_rat_trap_command(&rat_trap, &job_dir, &["info", input_arg])?;
+    let report = format!(
+        "NoMeter Rat-Trap archive info\n\nArchive: {}\n\nMetadata:\n{}",
+        request.file_name, log
+    );
+    let output_name = format!("{}-info.txt", safe_stem(&request.file_name));
+    let saved_path = persist_output(output_dir, &output_name, report.as_bytes())?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "text/plain".into(),
+        bytes_base64: general_purpose::STANDARD.encode(report.as_bytes()),
+        log,
+        saved_path,
+    })
+}
+
+#[tauri::command]
 async fn export_rat_trap_archive_to_zip(request: RatTrapSingleArchiveRequest) -> Result<NativeArtifact, String> {
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
@@ -1030,6 +1060,7 @@ fn main() {
             optimize_pdf,
             compress_pdf_with_ghostscript,
             compress_files_with_rat_trap,
+            inspect_rat_trap_archive,
             extract_rat_trap_archive,
             export_rat_trap_archive_to_zip
         ])

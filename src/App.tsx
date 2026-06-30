@@ -44,6 +44,7 @@ import {
   extractRatTrapArchive,
   getNativeCommandPreview,
   getNativeRuntimeStatus,
+  inspectRatTrapArchive,
   nativeEngineCatalog,
   optimizePdfFile,
   pickNativeFolder,
@@ -60,6 +61,7 @@ type ToolId =
   | 'image-convert'
   | 'archive-zip'
   | 'rat-trap-archive'
+  | 'rat-trap-inspect'
   | 'rat-trap-extract'
   | 'rat-trap-export-zip'
   | 'pdf-merge'
@@ -176,6 +178,12 @@ const toolOptions: ToolOption[] = [
     icon: Archive,
   },
   {
+    id: 'rat-trap-inspect',
+    label: 'Inspect GMW',
+    detail: 'Metadata report',
+    icon: FileText,
+  },
+  {
     id: 'rat-trap-extract',
     label: 'Extract GMW',
     detail: 'Native folder',
@@ -242,6 +250,11 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
     source: 'Any local files',
     output: 'GMW archive',
     focus: 'Use the optional local Rat-Trap engine in desktop mode.',
+  },
+  'rat-trap-inspect': {
+    source: 'A .gmw archive',
+    output: 'Metadata report',
+    focus: 'Read Rat-Trap archive metadata before extracting or sharing.',
   },
   'rat-trap-extract': {
     source: 'A .gmw archive',
@@ -1365,7 +1378,9 @@ function App() {
                 ? 'Add any local files before building a ZIP archive.'
                 : activeTool === 'rat-trap-archive'
                   ? 'Add any local files before building a Rat-Trap GMW archive.'
-                  : activeTool === 'rat-trap-extract' || activeTool === 'rat-trap-export-zip'
+                  : activeTool === 'rat-trap-inspect' ||
+                      activeTool === 'rat-trap-extract' ||
+                      activeTool === 'rat-trap-export-zip'
                     ? 'Add a .gmw Rat-Trap archive before running this archive job.'
                   : activeTool === 'native-engine'
                     ? 'Add one or more audio or video files before running FFmpeg conversion.'
@@ -1394,6 +1409,10 @@ function App() {
 
       if (activeTool === 'rat-trap-archive') {
         await runRatTrapArchive(runnableJobs)
+      }
+
+      if (activeTool === 'rat-trap-inspect') {
+        await runRatTrapArchiveAction(runnableJobs, 'inspect')
       }
 
       if (activeTool === 'rat-trap-extract') {
@@ -1562,25 +1581,32 @@ function App() {
     }
   }
 
-  const runRatTrapArchiveAction = async (compatibleJobs: QueueJob[], mode: 'extract' | 'export-zip') => {
+  const runRatTrapArchiveAction = async (compatibleJobs: QueueJob[], mode: 'inspect' | 'extract' | 'export-zip') => {
     let completed = 0
+    const isInspect = mode === 'inspect'
     const isExtract = mode === 'extract'
 
     for (const job of compatibleJobs) {
       updateJob(job.id, {
         status: 'running',
         progress: 35,
-        message: isExtract ? 'Extracting GMW with Rat-Trap' : 'Exporting GMW to ZIP with Rat-Trap',
+        message: isInspect
+          ? 'Inspecting GMW with Rat-Trap'
+          : isExtract
+            ? 'Extracting GMW with Rat-Trap'
+            : 'Exporting GMW to ZIP with Rat-Trap',
       })
 
       try {
-        const result = isExtract
-          ? await extractRatTrapArchive(job.file, nativeFolders)
-          : await exportRatTrapArchiveToZip(job.file, nativeFolders)
+        const result = isInspect
+          ? await inspectRatTrapArchive(job.file, nativeFolders)
+          : isExtract
+            ? await extractRatTrapArchive(job.file, nativeFolders)
+            : await exportRatTrapArchiveToZip(job.file, nativeFolders)
         const artifact = createArtifact(
           result.blob,
           result.name,
-          isExtract ? 'Rat-Trap GMW extraction' : 'Rat-Trap ZIP export',
+          isInspect ? 'Rat-Trap GMW info' : isExtract ? 'Rat-Trap GMW extraction' : 'Rat-Trap ZIP export',
           1,
           result.savedPath,
         )
@@ -1588,7 +1614,10 @@ function App() {
         updateJob(job.id, {
           status: 'done',
           progress: 100,
-          message: nativeOutputMessage(result, isExtract ? 'GMW extracted' : 'ZIP export ready'),
+          message: nativeOutputMessage(
+            result,
+            isInspect ? 'GMW metadata ready' : isExtract ? 'GMW extracted' : 'ZIP export ready',
+          ),
           outputName: result.name,
         })
         completed += 1
@@ -1606,7 +1635,11 @@ function App() {
       text:
         completed > 0
           ? `${completed} GMW archive${completed === 1 ? '' : 's'} ${
-              isExtract ? 'extracted with Rat-Trap.' : 'exported to ZIP with Rat-Trap.'
+              isInspect
+                ? 'inspected with Rat-Trap.'
+                : isExtract
+                  ? 'extracted with Rat-Trap.'
+                  : 'exported to ZIP with Rat-Trap.'
             }`
           : 'No Rat-Trap archive outputs were created. Install Rat-Trap or set NOMETER_RATTRAP_ROOT.',
     })
@@ -2867,6 +2900,11 @@ function App() {
                   <Archive size={18} />
                   <span>GMW archive</span>
                 </div>
+              ) : activeTool === 'rat-trap-inspect' ? (
+                <div className="pdf-output">
+                  <FileText size={18} />
+                  <span>Metadata report</span>
+                </div>
               ) : activeTool === 'rat-trap-extract' ? (
                 <div className="pdf-output">
                   <FolderOutput size={18} />
@@ -3236,7 +3274,7 @@ function inferMissionTool(jobs: QueueJob[]): ToolId | null {
   if (onlyKind === 'media') return 'native-engine'
   if (onlyKind === 'document') return 'document-convert'
   if (onlyKind === 'pdf') return 'pdf-merge'
-  if (jobs.every((job) => isGmwArchive(job.file))) return 'rat-trap-export-zip'
+  if (jobs.every((job) => isGmwArchive(job.file))) return 'rat-trap-inspect'
   if (onlyKind === 'archive' || onlyKind === 'unknown') return 'archive-zip'
 
   return null
@@ -3245,7 +3283,9 @@ function inferMissionTool(jobs: QueueJob[]): ToolId | null {
 function isCompatibleForTool(job: QueueJob, tool: ToolId) {
   if (tool === 'archive-zip') return true
   if (tool === 'rat-trap-archive') return true
-  if (tool === 'rat-trap-extract' || tool === 'rat-trap-export-zip') return isGmwArchive(job.file)
+  if (tool === 'rat-trap-inspect' || tool === 'rat-trap-extract' || tool === 'rat-trap-export-zip') {
+    return isGmwArchive(job.file)
+  }
   if (tool === 'native-engine') return job.kind === 'media'
   if (tool === 'document-convert') return job.kind === 'document'
   if (tool === 'pdf-optimize') return job.kind === 'pdf'
@@ -3332,7 +3372,12 @@ function requiresDesktopTool(tool: ToolId) {
 }
 
 function isRatTrapTool(tool: ToolId) {
-  return tool === 'rat-trap-archive' || tool === 'rat-trap-extract' || tool === 'rat-trap-export-zip'
+  return (
+    tool === 'rat-trap-archive' ||
+    tool === 'rat-trap-inspect' ||
+    tool === 'rat-trap-extract' ||
+    tool === 'rat-trap-export-zip'
+  )
 }
 
 function isGmwArchive(file: File) {

@@ -42,7 +42,7 @@ See [`docs/first-run.md`](docs/first-run.md) for the short user guide and [`docs
   - Pandoc: document output to HTML, DOCX, Markdown, EPUB.
   - qpdf: PDF repair/compression/linearization.
   - Ghostscript: optional local PDF compression when installed/configured.
-  - Rat-Trap: optional local GMW archive packing, extraction, and ZIP export when installed/configured.
+  - Rat-Trap: optional local GMW archive packing, metadata inspection, extraction, and ZIP export when installed/configured.
 - Configure native work and save directories (with defaults that can be set to avoid system-drive usage).
 
 ## Quick start

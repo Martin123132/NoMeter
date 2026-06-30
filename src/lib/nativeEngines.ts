@@ -299,6 +299,14 @@ export async function extractRatTrapArchive(file: File, folders?: NativeFolders)
   return runRatTrapArchiveCommand('extract_rat_trap_archive', file, folders)
 }
 
+export async function inspectRatTrapArchive(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Rat-Trap archive inspection requires the NoMeter desktop app.')
+  }
+
+  return runRatTrapArchiveCommand('inspect_rat_trap_archive', file, folders)
+}
+
 export async function exportRatTrapArchiveToZip(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
     throw new Error('Rat-Trap ZIP export requires the NoMeter desktop app.')
@@ -308,7 +316,7 @@ export async function exportRatTrapArchiveToZip(file: File, folders?: NativeFold
 }
 
 async function runRatTrapArchiveCommand(
-  command: 'extract_rat_trap_archive' | 'export_rat_trap_archive_to_zip',
+  command: 'extract_rat_trap_archive' | 'inspect_rat_trap_archive' | 'export_rat_trap_archive_to_zip',
   file: File,
   folders?: NativeFolders,
 ) {
