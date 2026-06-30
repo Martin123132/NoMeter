@@ -9,7 +9,7 @@ NoMeter's browser MVP already handles image conversion, ZIP bundling, PDF merge,
 | FFmpeg | Audio/video conversion, extraction, GIF/video workflows | Wired |
 | Pandoc | Documents, Markdown, HTML, DOCX, ODT | Wired |
 | qpdf | PDF repair, linearization, structural operations | Wired |
-| Ghostscript | PDF compression through local `pdfwrite` | Optional local engine |
+| Ghostscript | PDF compression through local `pdfwrite`, plus PDF page rasterization to PNG ZIPs | Optional local engine |
 | Rat-Trap | GMW archive packing, metadata inspection, extraction, and ZIP export | Optional local engine |
 | OCRmyPDF | Searchable scanned PDFs | Planned optional engine |
 | Tesseract | OCR text recognition | Planned optional engine |
@@ -79,7 +79,7 @@ The current Pandoc adapter accepts a document `File`, writes it to the configure
 
 The current qpdf adapter accepts a PDF `File`, writes it to the configured work folder, runs the bundled qpdf sidecar, copies the output to the configured save folder, and returns a repaired, compressed, linearized PDF.
 
-The current Ghostscript adapter accepts a PDF `File`, writes it to the configured work folder, runs a locally installed Ghostscript executable with a controlled `pdfwrite` compression preset, copies the output to the configured save folder, and returns a compressed PDF. It does not bundle Ghostscript.
+The current Ghostscript adapter accepts a PDF `File`, writes it to the configured work folder, runs a locally installed Ghostscript executable, and copies outputs to the configured save folder. It supports controlled `pdfwrite` compression and PNG page rasterization packaged as a ZIP. It does not bundle Ghostscript.
 
 The current Rat-Trap adapter accepts queued NoMeter files, writes them to a configured work folder, runs a locally installed Rat-Trap CLI or Python package entry point, and copies the `.gmw` output to the configured save folder. It can also accept a `.gmw` archive, save a metadata report from `rat-trap info`, extract it into the configured save folder, or export it to a standard ZIP. It does not bundle Rat-Trap or copy private engine source into this public repository.
 

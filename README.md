@@ -150,7 +150,7 @@ See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md)
 
 - Browser core is stable (images/ZIP/PDF merge/split).
 - Native engine adapters (FFmpeg, Pandoc, qpdf) are wired and queue-integrated.
-- Ghostscript PDF compression and Rat-Trap GMW archive workflows are available as optional local desktop engines.
+- Ghostscript PDF compression/rasterization and Rat-Trap GMW archive workflows are available as optional local desktop engines.
 - Remaining roadmap focuses on OCR support and richer document formats.
 
 Full roadmap details live in [`ROADMAP.md`](ROADMAP.md).

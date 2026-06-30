@@ -1,7 +1,8 @@
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::{
-    fs,
+    fs::{self, File},
+    io::{Read, Write},
     path::{Path, PathBuf},
     process::Command,
     time::{SystemTime, UNIX_EPOCH},
@@ -41,6 +42,15 @@ struct PdfCompressRequest {
     file_name: String,
     bytes_base64: String,
     preset: Option<String>,
+    folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct PdfRasterizeRequest {
+    file_name: String,
+    bytes_base64: String,
+    dpi: Option<u16>,
     folders: Option<NativeFolders>,
 }
 
@@ -307,6 +317,98 @@ async fn compress_pdf_with_ghostscript(request: PdfCompressRequest) -> Result<Na
     Ok(NativeArtifact {
         name: output_name,
         mime_type: "application/pdf".into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+        saved_path,
+    })
+}
+
+#[tauri::command]
+async fn rasterize_pdf_with_ghostscript(
+    request: PdfRasterizeRequest,
+) -> Result<NativeArtifact, String> {
+    let input_bytes = general_purpose::STANDARD
+        .decode(request.bytes_base64.as_bytes())
+        .map_err(|error| format!("Could not decode PDF input: {error}"))?;
+
+    if input_bytes.is_empty() {
+        return Err("The selected PDF file was empty.".into());
+    }
+
+    let dpi = request.dpi.unwrap_or(144).clamp(72, 300);
+    let ghostscript = ghostscript_command()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    let pages_dir = job_dir.join("pages");
+    fs::create_dir_all(&pages_dir)
+        .map_err(|error| format!("Could not create raster page folder: {error}"))?;
+
+    let stem = safe_stem(&request.file_name);
+    let output_name = format!("{stem}-pages.zip");
+    let input_path = job_dir.join("input.pdf");
+    let output_pattern = pages_dir.join(format!("{stem}-page-%03d.png"));
+    let zip_path = job_dir.join(&output_name);
+
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write PDF input: {error}"))?;
+
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "Input path contains unsupported characters.".to_string())?;
+    let output_pattern_arg = output_pattern
+        .to_str()
+        .ok_or_else(|| "Raster output path contains unsupported characters.".to_string())?;
+
+    let output = Command::new(&ghostscript)
+        .current_dir(&job_dir)
+        .args([
+            "-dSAFER",
+            "-dBATCH",
+            "-dNOPAUSE",
+            "-sDEVICE=png16m",
+            "-dTextAlphaBits=4",
+            "-dGraphicsAlphaBits=4",
+        ])
+        .arg(format!("-r{dpi}"))
+        .arg(format!("-sOutputFile={output_pattern_arg}"))
+        .arg(input_arg)
+        .output()
+        .map_err(|error| {
+            format!(
+                "Ghostscript is unavailable: {error}. Install Ghostscript or set NOMETER_GHOSTSCRIPT_EXE/NOMETER_GHOSTSCRIPT_ROOT."
+            )
+        })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+
+    if !output.status.success() {
+        let log = compact_log(&format!("{stdout}\n{stderr}"));
+        return Err(format!(
+            "Ghostscript failed with status {:?}: {log}",
+            output.status.code()
+        ));
+    }
+
+    let page_paths = collect_extension_files(&pages_dir, "png")?;
+    if page_paths.is_empty() {
+        return Err("Ghostscript finished but did not produce any PNG pages.".into());
+    }
+
+    write_zip_archive(&zip_path, &page_paths, &pages_dir)?;
+    let output_bytes =
+        fs::read(&zip_path).map_err(|error| format!("Could not read Ghostscript ZIP output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
+    let log = compact_log(&format!(
+        "{stdout}\n{stderr}\nRasterized {} page{} at {dpi} DPI.",
+        page_paths.len(),
+        if page_paths.len() == 1 { "" } else { "s" }
+    ));
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "application/zip".into(),
         bytes_base64: general_purpose::STANDARD.encode(output_bytes),
         log,
         saved_path,
@@ -835,6 +937,62 @@ fn find_first_named_file(root: &Path, names: &[&str], depth: usize) -> Option<Pa
     None
 }
 
+fn collect_extension_files(dir: &Path, extension: &str) -> Result<Vec<PathBuf>, String> {
+    let mut files = Vec::new();
+    let entries = fs::read_dir(dir)
+        .map_err(|error| format!("Could not read generated page folder: {error}"))?;
+
+    for entry in entries {
+        let path = entry
+            .map_err(|error| format!("Could not inspect generated page: {error}"))?
+            .path();
+
+        if path.is_file()
+            && path
+                .extension()
+                .and_then(|value| value.to_str())
+                .is_some_and(|value| value.eq_ignore_ascii_case(extension))
+        {
+            files.push(path);
+        }
+    }
+
+    files.sort_by(|left, right| left.file_name().cmp(&right.file_name()));
+    Ok(files)
+}
+
+fn write_zip_archive(zip_path: &Path, files: &[PathBuf], base_dir: &Path) -> Result<(), String> {
+    let zip_file =
+        File::create(zip_path).map_err(|error| format!("Could not create ZIP output: {error}"))?;
+    let mut zip = zip::ZipWriter::new(zip_file);
+    let options = zip::write::FileOptions::default()
+        .compression_method(zip::CompressionMethod::Deflated);
+    let mut buffer = Vec::new();
+
+    for file_path in files {
+        let zip_name = file_path
+            .strip_prefix(base_dir)
+            .unwrap_or(file_path)
+            .to_string_lossy()
+            .replace('\\', "/");
+        zip.start_file(zip_name, options)
+            .map_err(|error| format!("Could not add file to ZIP: {error}"))?;
+
+        let mut source =
+            File::open(file_path).map_err(|error| format!("Could not read page image: {error}"))?;
+        source
+            .read_to_end(&mut buffer)
+            .map_err(|error| format!("Could not buffer page image: {error}"))?;
+        zip.write_all(&buffer)
+            .map_err(|error| format!("Could not write page image to ZIP: {error}"))?;
+        buffer.clear();
+    }
+
+    zip.finish()
+        .map_err(|error| format!("Could not finish ZIP output: {error}"))?;
+    Ok(())
+}
+
 fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String> {
     if let Some(path) = configured_folder(folders.and_then(|value| value.work_dir.as_deref()), "work")? {
         return Ok(path);
@@ -1059,6 +1217,7 @@ fn main() {
             convert_document,
             optimize_pdf,
             compress_pdf_with_ghostscript,
+            rasterize_pdf_with_ghostscript,
             compress_files_with_rat_trap,
             inspect_rat_trap_archive,
             extract_rat_trap_archive,

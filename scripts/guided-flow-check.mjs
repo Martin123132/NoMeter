@@ -149,10 +149,15 @@ checkText(appText, appPath, 'native optional engine status badges', [
 
 checkText(appText, appPath, 'Ghostscript PDF compression route', [
   "'pdf-compress'",
+  "'pdf-rasterize'",
   "label: 'Compress PDFs'",
+  "label: 'Rasterize PDFs'",
   'Ghostscript optional',
+  'PNG page ZIP',
   'compressPdfFile(job.file, nativeFolders)',
+  'rasterizePdfFile(job.file, nativeFolders)',
   'Ghostscript compression',
+  'Ghostscript rasterization',
   'Install Ghostscript or set NOMETER_GHOSTSCRIPT_ROOT',
 ])
 

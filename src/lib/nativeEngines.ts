@@ -57,7 +57,7 @@ export const nativeEngineCatalog: NativeEngine[] = [
   {
     id: 'ghostscript',
     name: 'Ghostscript',
-    role: 'optional local PDF compression',
+    role: 'optional local PDF compression and rasterization',
     command: 'gswin64c',
     sidecarName: 'local Ghostscript',
     status: 'optional',
@@ -106,7 +106,7 @@ export async function getNativeRuntimeStatus(): Promise<NativeRuntimeStatus> {
     return {
       available: true,
       label: 'Desktop bridge',
-      detail: 'Tauri bridge loaded. FFmpeg, Pandoc, qpdf, and optional Rat-Trap jobs are available in the desktop app.',
+      detail: 'Tauri bridge loaded. FFmpeg, Pandoc, qpdf, optional Ghostscript, and optional Rat-Trap jobs are available in the desktop app.',
     }
   } catch {
     return {
@@ -247,6 +247,35 @@ export async function compressPdfFile(file: File, folders?: NativeFolders): Prom
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
       preset: 'ebook',
+      folders: normalizeNativeFolders(folders),
+    },
+  })
+
+  return {
+    name: artifact.name,
+    blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
+    log: artifact.log,
+    savedPath: artifact.savedPath,
+  }
+}
+
+export async function rasterizePdfFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Ghostscript PDF rasterization requires the NoMeter desktop app.')
+  }
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  const artifact = await invoke<{
+    name: string
+    mimeType: string
+    bytesBase64: string
+    log: string
+    savedPath?: string
+  }>('rasterize_pdf_with_ghostscript', {
+    request: {
+      fileName: file.name,
+      bytesBase64: await fileToBase64(file),
+      dpi: 144,
       folders: normalizeNativeFolders(folders),
     },
   })

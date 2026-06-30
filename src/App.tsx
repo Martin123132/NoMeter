@@ -48,6 +48,7 @@ import {
   nativeEngineCatalog,
   optimizePdfFile,
   pickNativeFolder,
+  rasterizePdfFile,
   transcodeMediaFile,
   type DocumentOutputFormat,
   type NativeFolders,
@@ -68,6 +69,7 @@ type ToolId =
   | 'pdf-split'
   | 'pdf-optimize'
   | 'pdf-compress'
+  | 'pdf-rasterize'
   | 'document-convert'
   | 'native-engine'
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
@@ -220,6 +222,12 @@ const toolOptions: ToolOption[] = [
     icon: FileText,
   },
   {
+    id: 'pdf-rasterize',
+    label: 'Rasterize PDFs',
+    detail: 'PNG page ZIP',
+    icon: Image,
+  },
+  {
     id: 'document-convert',
     label: 'Documents',
     detail: 'MD, HTML, DOCX, EPUB',
@@ -284,6 +292,11 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
   'pdf-compress': {
     source: 'PDFs that need smaller file size',
     output: 'Compressed PDF',
+    focus: 'Use the optional local Ghostscript path in desktop mode.',
+  },
+  'pdf-rasterize': {
+    source: 'PDFs that need page images',
+    output: 'ZIP of PNG pages',
     focus: 'Use the optional local Ghostscript path in desktop mode.',
   },
   'document-convert': {
@@ -418,6 +431,7 @@ function App() {
       activeTool === 'document-convert' ||
       activeTool === 'pdf-optimize' ||
       activeTool === 'pdf-compress' ||
+      activeTool === 'pdf-rasterize' ||
       isRatTrapTool(activeTool)) &&
     !nativeStatus.available
   const missionFolderWarning = requiresDesktopTool(activeTool) ? nativeFolderIssue : null
@@ -769,7 +783,7 @@ function App() {
         tone: 'warning' as const,
         title: 'Native path needed',
         message:
-          'This recipe needs native engines (FFmpeg, Pandoc, or qpdf). Open the Options panel to confirm your native mode and paths.',
+          'This recipe needs a native engine. Open the Options panel to confirm your desktop mode and local tool paths.',
         ctaLabel: 'Review native settings',
         ctaAction: jumpToOptions,
       }
@@ -862,7 +876,7 @@ function App() {
       return {
         tone: 'warning' as const,
         title: 'Enable native mode',
-        hint: 'This path needs FFmpeg/Pandoc/qpdf. Enable or switch to a browser-ready recipe.',
+        hint: 'This path needs a desktop/native engine. Enable or switch to a browser-ready recipe.',
         ctaLabel: 'Open options',
         ctaAction: jumpToOptions,
       }
@@ -1342,10 +1356,10 @@ function App() {
       return
     }
 
-    if (activeTool === 'pdf-compress' && !nativeStatus.available) {
+    if ((activeTool === 'pdf-compress' || activeTool === 'pdf-rasterize') && !nativeStatus.available) {
       setBanner({
         tone: 'warning',
-        text: 'Ghostscript compression needs the NoMeter desktop app and a local Ghostscript install.',
+        text: 'Ghostscript PDF jobs need the NoMeter desktop app and a local Ghostscript install.',
       })
       return
     }
@@ -1390,6 +1404,8 @@ function App() {
                         ? 'Add one or more PDF files before running qpdf optimization.'
                         : activeTool === 'pdf-compress'
                           ? 'Add one or more PDF files before running Ghostscript compression.'
+                          : activeTool === 'pdf-rasterize'
+                            ? 'Add one or more PDF files before running Ghostscript rasterization.'
                           : 'Add one or more PDF files before running this PDF job.',
       })
       return
@@ -1437,6 +1453,10 @@ function App() {
 
       if (activeTool === 'pdf-compress') {
         await runPdfCompress(runnableJobs)
+      }
+
+      if (activeTool === 'pdf-rasterize') {
+        await runPdfRasterize(runnableJobs)
       }
 
       if (activeTool === 'native-engine') {
@@ -1798,6 +1818,45 @@ function App() {
         completed > 0
           ? `${completed} PDF${completed === 1 ? '' : 's'} compressed with Ghostscript.`
           : 'No Ghostscript exports were created. Install Ghostscript or set NOMETER_GHOSTSCRIPT_ROOT.',
+    })
+  }
+
+  const runPdfRasterize = async (compatibleJobs: QueueJob[]) => {
+    let completed = 0
+
+    for (const job of compatibleJobs) {
+      updateJob(job.id, {
+        status: 'running',
+        progress: 34,
+        message: 'Rasterizing pages with optional local Ghostscript',
+      })
+
+      try {
+        const result = await rasterizePdfFile(job.file, nativeFolders)
+        const artifact = createArtifact(result.blob, result.name, 'Ghostscript rasterization', 1, result.savedPath)
+        setExports((current) => [artifact, ...current])
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: nativeOutputMessage(result, 'PNG page ZIP ready'),
+          outputName: result.name,
+        })
+        completed += 1
+      } catch (error) {
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'Ghostscript rasterization failed.',
+        })
+      }
+    }
+
+    setBanner({
+      tone: completed > 0 ? 'success' : 'danger',
+      text:
+        completed > 0
+          ? `${completed} PDF${completed === 1 ? '' : 's'} rasterized with Ghostscript.`
+          : 'No Ghostscript raster exports were created. Install Ghostscript or set NOMETER_GHOSTSCRIPT_ROOT.',
     })
   }
 
@@ -2925,6 +2984,11 @@ function App() {
                   <CheckCircle2 size={18} />
                   <span>Compressed PDF</span>
                 </div>
+              ) : activeTool === 'pdf-rasterize' ? (
+                <div className="pdf-output">
+                  <Image size={18} />
+                  <span>PNG page ZIP</span>
+                </div>
               ) : activeTool === 'archive-zip' ? (
                 <div className="pdf-output">
                   <Archive size={18} />
@@ -3290,6 +3354,7 @@ function isCompatibleForTool(job: QueueJob, tool: ToolId) {
   if (tool === 'document-convert') return job.kind === 'document'
   if (tool === 'pdf-optimize') return job.kind === 'pdf'
   if (tool === 'pdf-compress') return job.kind === 'pdf'
+  if (tool === 'pdf-rasterize') return job.kind === 'pdf'
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'
   return false
@@ -3367,6 +3432,7 @@ function requiresDesktopTool(tool: ToolId) {
     tool === 'document-convert' ||
     tool === 'pdf-optimize' ||
     tool === 'pdf-compress' ||
+    tool === 'pdf-rasterize' ||
     isRatTrapTool(tool)
   )
 }
