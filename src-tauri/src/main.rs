@@ -559,8 +559,9 @@ fn rat_trap_command_spec() -> Result<ExternalCommandSpec, String> {
     for root in rat_trap_roots() {
         let package_dir = root.join("rat_trap");
         if package_dir.join("cli.py").exists() {
+            let python = python_command_for_root(&root);
             return Ok(ExternalCommandSpec {
-                executable: python_command(),
+                executable: python,
                 prefix_args: vec!["-m".into(), "rat_trap.cli".into()],
                 env: vec![("PYTHONPATH".into(), root.to_string_lossy().to_string())],
             });
@@ -594,7 +595,7 @@ fn rat_trap_roots() -> Vec<PathBuf> {
     roots
 }
 
-fn python_command() -> String {
+fn python_command_for_root(root: &Path) -> String {
     for env_name in ["NOMETER_PYTHON_EXE", "OPENFORGE_PYTHON_EXE"] {
         if let Ok(value) = std::env::var(env_name) {
             let trimmed = value.trim();
@@ -602,6 +603,15 @@ fn python_command() -> String {
                 return trimmed.into();
             }
         }
+    }
+
+    let venv_python = if cfg!(windows) {
+        root.join(".venv").join("Scripts").join("python.exe")
+    } else {
+        root.join(".venv").join("bin").join("python")
+    };
+    if venv_python.exists() {
+        return venv_python.to_string_lossy().to_string();
     }
 
     "python".into()

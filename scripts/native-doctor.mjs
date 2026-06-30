@@ -146,7 +146,7 @@ function ratTrapCheck() {
   if (localRatTrapPackage) {
     return {
       name: 'Rat-Trap',
-      command: pythonCommand(),
+      command: ratTrapPythonCommand(),
       args: ['-m', 'rat_trap.cli', '--help'],
       env: { PYTHONPATH: ratTrapRoot },
       required: false,
@@ -158,6 +158,14 @@ function ratTrapCheck() {
 
 function pythonCommand() {
   return envValue('NOMETER_PYTHON_EXE', 'OPENFORGE_PYTHON_EXE') || (process.platform === 'win32' ? 'python.exe' : 'python')
+}
+
+function ratTrapPythonCommand() {
+  const explicitPython = envValue('NOMETER_PYTHON_EXE', 'OPENFORGE_PYTHON_EXE')
+  if (explicitPython) return explicitPython
+
+  const venvPython = join(ratTrapRoot, '.venv', process.platform === 'win32' ? 'Scripts\\python.exe' : 'bin/python')
+  return existsSync(venvPython) ? venvPython : pythonCommand()
 }
 
 function envValue(primaryName, legacyName) {

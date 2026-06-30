@@ -53,7 +53,7 @@ Run:
 npm.cmd run native:doctor
 ```
 
-to verify prerequisites. Tesseract and OCRmyPDF are expected warnings until their adapters are added. Ghostscript is optional: it is usable when `native:doctor` can find `gswin64c`, `gs`, or an explicit `NOMETER_GHOSTSCRIPT_EXE`. Rat-Trap is optional: it is usable when `native:doctor` can find `rat-trap`, an explicit `NOMETER_RATTRAP_EXE`, or a Python package root at `NOMETER_RATTRAP_ROOT`.
+to verify prerequisites. Tesseract and OCRmyPDF are expected warnings until their adapters are added. Ghostscript is optional: it is usable when `native:doctor` can find `gswin64c`, `gs`, or an explicit `NOMETER_GHOSTSCRIPT_EXE`. Rat-Trap is optional: it is usable when `native:doctor` can find `rat-trap`, an explicit `NOMETER_RATTRAP_EXE`, or a Python package root at `NOMETER_RATTRAP_ROOT`. When that root contains `.venv`, NoMeter prefers the root-local Python before falling back to `PATH`.
 
 `native:doctor` checks the optional engine roots above before falling back to `PATH`. Passing optional checks means the tool is discoverable on the developer machine. The UI marks Ghostscript and Rat-Trap as `Optional` and keeps Tesseract/OCRmyPDF as `Planned` until their native commands, sidecar policy, and sample/fixture paths exist.
 
