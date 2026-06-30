@@ -65,7 +65,7 @@ export const nativeEngineCatalog: NativeEngine[] = [
   {
     id: 'rattrap',
     name: 'Rat-Trap',
-    role: 'optional local GMW archive compression',
+    role: 'optional local GMW archive workflows',
     command: 'rat-trap',
     sidecarName: 'local Rat-Trap',
     status: 'optional',
@@ -106,7 +106,7 @@ export async function getNativeRuntimeStatus(): Promise<NativeRuntimeStatus> {
     return {
       available: true,
       label: 'Desktop bridge',
-      detail: 'Tauri bridge loaded. FFmpeg, Pandoc, and qpdf conversion are available in the desktop app.',
+      detail: 'Tauri bridge loaded. FFmpeg, Pandoc, qpdf, and optional Rat-Trap jobs are available in the desktop app.',
     }
   } catch {
     return {
@@ -279,6 +279,50 @@ export async function compressFilesWithRatTrap(files: File[], folders?: NativeFo
           bytesBase64: await fileToBase64(file),
         })),
       ),
+      folders: normalizeNativeFolders(folders),
+    },
+  })
+
+  return {
+    name: artifact.name,
+    blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
+    log: artifact.log,
+    savedPath: artifact.savedPath,
+  }
+}
+
+export async function extractRatTrapArchive(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Rat-Trap archive extraction requires the NoMeter desktop app.')
+  }
+
+  return runRatTrapArchiveCommand('extract_rat_trap_archive', file, folders)
+}
+
+export async function exportRatTrapArchiveToZip(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Rat-Trap ZIP export requires the NoMeter desktop app.')
+  }
+
+  return runRatTrapArchiveCommand('export_rat_trap_archive_to_zip', file, folders)
+}
+
+async function runRatTrapArchiveCommand(
+  command: 'extract_rat_trap_archive' | 'export_rat_trap_archive_to_zip',
+  file: File,
+  folders?: NativeFolders,
+) {
+  const { invoke } = await import('@tauri-apps/api/core')
+  const artifact = await invoke<{
+    name: string
+    mimeType: string
+    bytesBase64: string
+    log: string
+    savedPath?: string
+  }>(command, {
+    request: {
+      fileName: file.name,
+      bytesBase64: await fileToBase64(file),
       folders: normalizeNativeFolders(folders),
     },
   })

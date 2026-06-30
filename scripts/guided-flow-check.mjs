@@ -109,10 +109,18 @@ checkText(appText, appPath, 'archive zip recipe', [
 
 checkText(appText, appPath, 'Rat-Trap native archive recipe', [
   "'rat-trap-archive'",
+  "'rat-trap-extract'",
+  "'rat-trap-export-zip'",
   "label: 'Rat-Trap GMW'",
+  "label: 'Extract GMW'",
+  "label: 'GMW to ZIP'",
   'Native archive',
   'compressFilesWithRatTrap(files, nativeFolders)',
+  "extractRatTrapArchive(job.file, nativeFolders)",
+  "exportRatTrapArchiveToZip(job.file, nativeFolders)",
   'Rat-Trap GMW archive',
+  'Rat-Trap GMW extraction',
+  'Rat-Trap ZIP export',
   'Install Rat-Trap or set NOMETER_RATTRAP_ROOT/NOMETER_RATTRAP_EXE',
 ])
 

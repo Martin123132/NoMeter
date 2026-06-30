@@ -21,6 +21,7 @@
 - [x] Add qpdf PDF repair/linearization adapter.
 - [x] Add Ghostscript optional local PDF compression adapter.
 - [x] Add Rat-Trap optional local GMW archive adapter.
+- [x] Add Rat-Trap GMW extraction and ZIP export actions.
 - [ ] Add Ghostscript PDF rasterization adapter.
 - [ ] Add OCRmyPDF/Tesseract OCR adapter.
 - [x] Add D:-scoped working directory defaults for this workspace.

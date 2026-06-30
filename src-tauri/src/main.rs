@@ -53,6 +53,14 @@ struct RatTrapArchiveRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct RatTrapSingleArchiveRequest {
+    file_name: String,
+    bytes_base64: String,
+    folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct NativeInputFile {
     file_name: String,
     bytes_base64: String,
@@ -385,6 +393,79 @@ async fn compress_files_with_rat_trap(request: RatTrapArchiveRequest) -> Result<
 }
 
 #[tauri::command]
+async fn extract_rat_trap_archive(request: RatTrapSingleArchiveRequest) -> Result<NativeArtifact, String> {
+    let rat_trap = rat_trap_command_spec()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create Rat-Trap work folder: {error}"))?;
+
+    let input_path = write_rat_trap_archive_input(&request, &job_dir)?;
+    let folder_name = format!("{}-extracted", safe_stem(&request.file_name));
+    let extract_dir = match output_dir {
+        Some(output_dir) => {
+            fs::create_dir_all(&output_dir)
+                .map_err(|error| format!("Could not create save folder: {error}"))?;
+            unique_output_path(&output_dir, &folder_name)
+        }
+        None => job_dir.join(&folder_name),
+    };
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "Rat-Trap archive path contains unsupported characters.".to_string())?;
+    let output_arg = extract_dir
+        .to_str()
+        .ok_or_else(|| "Rat-Trap extract path contains unsupported characters.".to_string())?;
+    let log = run_rat_trap_command(&rat_trap, &job_dir, &["extract", input_arg, output_arg])?;
+    let manifest = format!(
+        "NoMeter Rat-Trap extraction\n\nArchive: {}\nExtracted folder: {}\n\n{}",
+        request.file_name, output_arg, log
+    );
+    let output_name = format!("{}-extracted.txt", safe_stem(&request.file_name));
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "text/plain".into(),
+        bytes_base64: general_purpose::STANDARD.encode(manifest.as_bytes()),
+        log,
+        saved_path: Some(output_arg.into()),
+    })
+}
+
+#[tauri::command]
+async fn export_rat_trap_archive_to_zip(request: RatTrapSingleArchiveRequest) -> Result<NativeArtifact, String> {
+    let rat_trap = rat_trap_command_spec()?;
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create Rat-Trap work folder: {error}"))?;
+
+    let input_path = write_rat_trap_archive_input(&request, &job_dir)?;
+    let output_name = format!("{}.zip", safe_stem(&request.file_name));
+    let output_path = job_dir.join(&output_name);
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "Rat-Trap archive path contains unsupported characters.".to_string())?;
+    let output_arg = output_path
+        .to_str()
+        .ok_or_else(|| "Rat-Trap ZIP path contains unsupported characters.".to_string())?;
+    let log = run_rat_trap_command(&rat_trap, &job_dir, &["export-zip", input_arg, output_arg])?;
+    let output_bytes =
+        fs::read(&output_path).map_err(|error| format!("Could not read Rat-Trap ZIP output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "application/zip".into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+        saved_path,
+    })
+}
+
+#[tauri::command]
 async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Result<NativeArtifact, String> {
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
@@ -463,6 +544,53 @@ struct ExternalCommandSpec {
     executable: String,
     prefix_args: Vec<String>,
     env: Vec<(String, String)>,
+}
+
+fn write_rat_trap_archive_input(request: &RatTrapSingleArchiveRequest, job_dir: &Path) -> Result<PathBuf, String> {
+    let extension = safe_extension(&request.file_name).unwrap_or_default();
+    if extension != "gmw" {
+        return Err("Choose a .gmw Rat-Trap archive.".into());
+    }
+
+    let input_bytes = general_purpose::STANDARD
+        .decode(request.bytes_base64.as_bytes())
+        .map_err(|error| format!("Could not decode Rat-Trap archive: {error}"))?;
+    if input_bytes.is_empty() {
+        return Err("The selected Rat-Trap archive was empty.".into());
+    }
+
+    let input_path = job_dir.join("input.gmw");
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write Rat-Trap archive input: {error}"))?;
+    Ok(input_path)
+}
+
+fn run_rat_trap_command(rat_trap: &ExternalCommandSpec, job_dir: &Path, args: &[&str]) -> Result<String, String> {
+    let mut command = Command::new(&rat_trap.executable);
+    command.current_dir(job_dir);
+    command.args(&rat_trap.prefix_args);
+    command.args(args);
+    for (name, value) in &rat_trap.env {
+        command.env(name, value);
+    }
+
+    let output = command.output().map_err(|error| {
+        format!(
+            "Rat-Trap is unavailable: {error}. Install Rat-Trap or set NOMETER_RATTRAP_EXE/NOMETER_RATTRAP_ROOT."
+        )
+    })?;
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let log = compact_log(&format!("{stdout}\n{stderr}"));
+
+    if !output.status.success() {
+        return Err(format!(
+            "Rat-Trap failed with status {:?}: {log}",
+            output.status.code()
+        ));
+    }
+
+    Ok(log)
 }
 
 fn document_output_config(format: &str) -> Option<DocumentOutputConfig> {
@@ -901,7 +1029,9 @@ fn main() {
             convert_document,
             optimize_pdf,
             compress_pdf_with_ghostscript,
-            compress_files_with_rat_trap
+            compress_files_with_rat_trap,
+            extract_rat_trap_archive,
+            export_rat_trap_archive_to_zip
         ])
         .run(tauri::generate_context!())
         .expect("error while running NoMeter");
