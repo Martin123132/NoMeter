@@ -21,6 +21,12 @@ export type NativeFolders = {
 }
 
 export type DocumentOutputFormat = 'html' | 'docx' | 'markdown' | 'epub'
+export type PdfRasterFormat = 'png' | 'jpg'
+
+export type PdfRasterOptions = {
+  format: PdfRasterFormat
+  dpi: number
+}
 
 export type NativeTranscodeResult = {
   name: string
@@ -259,7 +265,11 @@ export async function compressPdfFile(file: File, folders?: NativeFolders): Prom
   }
 }
 
-export async function rasterizePdfFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+export async function rasterizePdfFile(
+  file: File,
+  options: PdfRasterOptions,
+  folders?: NativeFolders,
+): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
     throw new Error('Ghostscript PDF rasterization requires the NoMeter desktop app.')
   }
@@ -275,7 +285,8 @@ export async function rasterizePdfFile(file: File, folders?: NativeFolders): Pro
     request: {
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
-      dpi: 144,
+      outputFormat: options.format,
+      dpi: options.dpi,
       folders: normalizeNativeFolders(folders),
     },
   })

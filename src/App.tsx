@@ -54,6 +54,7 @@ import {
   type NativeFolders,
   type NativeRuntimeStatus,
   type NativeTranscodeResult,
+  type PdfRasterFormat,
 } from './lib/nativeEngines'
 import './App.css'
 
@@ -224,7 +225,7 @@ const toolOptions: ToolOption[] = [
   {
     id: 'pdf-rasterize',
     label: 'Rasterize PDFs',
-    detail: 'PNG page ZIP',
+    detail: 'PNG/JPG pages',
     icon: Image,
   },
   {
@@ -296,7 +297,7 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
   },
   'pdf-rasterize': {
     source: 'PDFs that need page images',
-    output: 'ZIP of PNG pages',
+    output: 'ZIP of PNG/JPG pages',
     focus: 'Use the optional local Ghostscript path in desktop mode.',
   },
   'document-convert': {
@@ -345,6 +346,8 @@ function App() {
   const [imageFormat, setImageFormat] = useState<ImageFormat>('webp')
   const [documentFormat, setDocumentFormat] = useState<DocumentOutputFormat>('html')
   const [nativeFolders, setNativeFolders] = useState<NativeFolders>(loadNativeFolders)
+  const [pdfRasterFormat, setPdfRasterFormat] = useState<PdfRasterFormat>('png')
+  const [pdfRasterDpi, setPdfRasterDpi] = useState(144)
   const [quality, setQuality] = useState(82)
   const [preserveNames, setPreserveNames] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
@@ -1832,13 +1835,17 @@ function App() {
       })
 
       try {
-        const result = await rasterizePdfFile(job.file, nativeFolders)
+        const result = await rasterizePdfFile(
+          job.file,
+          { format: pdfRasterFormat, dpi: pdfRasterDpi },
+          nativeFolders,
+        )
         const artifact = createArtifact(result.blob, result.name, 'Ghostscript rasterization', 1, result.savedPath)
         setExports((current) => [artifact, ...current])
         updateJob(job.id, {
           status: 'done',
           progress: 100,
-          message: nativeOutputMessage(result, 'PNG page ZIP ready'),
+          message: nativeOutputMessage(result, `${pdfRasterFormat.toUpperCase()} page ZIP ready`),
           outputName: result.name,
         })
         completed += 1
@@ -2985,10 +2992,36 @@ function App() {
                   <span>Compressed PDF</span>
                 </div>
               ) : activeTool === 'pdf-rasterize' ? (
-                <div className="pdf-output">
-                  <Image size={18} />
-                  <span>PNG page ZIP</span>
-                </div>
+                <>
+                  <div className="segmented-control" aria-label="Raster image format">
+                    {(['png', 'jpg'] as PdfRasterFormat[]).map((format) => (
+                      <button
+                        type="button"
+                        key={format}
+                        className={pdfRasterFormat === format ? 'active' : ''}
+                        onClick={() => setPdfRasterFormat(format)}
+                      >
+                        {format.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="segmented-control" aria-label="Raster DPI">
+                    {[96, 144, 200, 300].map((dpi) => (
+                      <button
+                        type="button"
+                        key={dpi}
+                        className={pdfRasterDpi === dpi ? 'active' : ''}
+                        onClick={() => setPdfRasterDpi(dpi)}
+                      >
+                        {dpi}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="pdf-output">
+                    <Image size={18} />
+                    <span>{pdfRasterFormat.toUpperCase()} page ZIP</span>
+                  </div>
+                </>
               ) : activeTool === 'archive-zip' ? (
                 <div className="pdf-output">
                   <Archive size={18} />

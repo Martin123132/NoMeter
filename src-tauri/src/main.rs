@@ -50,6 +50,7 @@ struct PdfCompressRequest {
 struct PdfRasterizeRequest {
     file_name: String,
     bytes_base64: String,
+    output_format: Option<String>,
     dpi: Option<u16>,
     folders: Option<NativeFolders>,
 }
@@ -91,6 +92,12 @@ struct NativeArtifact {
     bytes_base64: String,
     log: String,
     saved_path: Option<String>,
+}
+
+struct GhostscriptRasterConfig {
+    device: &'static str,
+    extension: &'static str,
+    description: &'static str,
 }
 
 #[tauri::command]
@@ -336,6 +343,7 @@ async fn rasterize_pdf_with_ghostscript(
     }
 
     let dpi = request.dpi.unwrap_or(144).clamp(72, 300);
+    let raster_config = ghostscript_raster_config(request.output_format.as_deref())?;
     let ghostscript = ghostscript_command()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
@@ -347,7 +355,10 @@ async fn rasterize_pdf_with_ghostscript(
     let stem = safe_stem(&request.file_name);
     let output_name = format!("{stem}-pages.zip");
     let input_path = job_dir.join("input.pdf");
-    let output_pattern = pages_dir.join(format!("{stem}-page-%03d.png"));
+    let output_pattern = pages_dir.join(format!(
+        "{stem}-page-%03d.{}",
+        raster_config.extension
+    ));
     let zip_path = job_dir.join(&output_name);
 
     fs::write(&input_path, input_bytes)
@@ -366,10 +377,10 @@ async fn rasterize_pdf_with_ghostscript(
             "-dSAFER",
             "-dBATCH",
             "-dNOPAUSE",
-            "-sDEVICE=png16m",
             "-dTextAlphaBits=4",
             "-dGraphicsAlphaBits=4",
         ])
+        .arg(format!("-sDEVICE={}", raster_config.device))
         .arg(format!("-r{dpi}"))
         .arg(format!("-sOutputFile={output_pattern_arg}"))
         .arg(input_arg)
@@ -391,9 +402,12 @@ async fn rasterize_pdf_with_ghostscript(
         ));
     }
 
-    let page_paths = collect_extension_files(&pages_dir, "png")?;
+    let page_paths = collect_extension_files(&pages_dir, raster_config.extension)?;
     if page_paths.is_empty() {
-        return Err("Ghostscript finished but did not produce any PNG pages.".into());
+        return Err(format!(
+            "Ghostscript finished but did not produce any {} pages.",
+            raster_config.description
+        ));
     }
 
     write_zip_archive(&zip_path, &page_paths, &pages_dir)?;
@@ -401,8 +415,9 @@ async fn rasterize_pdf_with_ghostscript(
         fs::read(&zip_path).map_err(|error| format!("Could not read Ghostscript ZIP output: {error}"))?;
     let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
     let log = compact_log(&format!(
-        "{stdout}\n{stderr}\nRasterized {} page{} at {dpi} DPI.",
+        "{stdout}\n{stderr}\nRasterized {} {} page{} at {dpi} DPI.",
         page_paths.len(),
+        raster_config.description,
         if page_paths.len() == 1 { "" } else { "s" }
     ));
 
@@ -759,6 +774,22 @@ fn ghostscript_pdf_preset(value: Option<&str>) -> Result<&'static str, String> {
         "prepress" => Ok("/prepress"),
         "default" => Ok("/default"),
         other => Err(format!("Unsupported Ghostscript PDF preset: {other}")),
+    }
+}
+
+fn ghostscript_raster_config(value: Option<&str>) -> Result<GhostscriptRasterConfig, String> {
+    match value.unwrap_or("png").trim().to_ascii_lowercase().as_str() {
+        "png" => Ok(GhostscriptRasterConfig {
+            device: "png16m",
+            extension: "png",
+            description: "PNG",
+        }),
+        "jpg" | "jpeg" => Ok(GhostscriptRasterConfig {
+            device: "jpeg",
+            extension: "jpg",
+            description: "JPEG",
+        }),
+        other => Err(format!("Unsupported Ghostscript raster output format: {other}")),
     }
 }
 
