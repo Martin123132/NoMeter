@@ -36,7 +36,9 @@ Paths shown below are examples; they should be configurable via your local envir
 - Ghostscript tools: `${NOMETER_GHOSTSCRIPT_ROOT}` or `${NOMETER_ROOT}/tools/ghostscript`
 - Rat-Trap tools: `${NOMETER_RATTRAP_ROOT}` or `${NOMETER_ROOT}/tools/rat-trap`
 - Tesseract tools: `${NOMETER_TESSERACT_ROOT}` or `${NOMETER_ROOT}/tools/tesseract`
+- Tesseract executable override: `${NOMETER_TESSERACT_EXE}`
 - OCRmyPDF tools: `${NOMETER_OCRMYPDF_ROOT}` or `${NOMETER_ROOT}/tools/ocrmypdf`
+- OCRmyPDF executable override: `${NOMETER_OCRMYPDF_EXE}`
 - FFmpeg sidecars: `src-tauri/binaries/ffmpeg-<host-triple>.exe` and `src-tauri/binaries/ffprobe-<host-triple>.exe`
 - Pandoc sidecar: `src-tauri/binaries/pandoc-<host-triple>.exe`
 - qpdf sidecar: `src-tauri/binaries/qpdf-<host-triple>.exe`
@@ -56,6 +58,20 @@ npm.cmd run native:doctor
 to verify prerequisites. Tesseract and OCRmyPDF are expected warnings until their adapters are added. Ghostscript is optional: it is usable when `native:doctor` can find `gswin64c`, `gs`, or an explicit `NOMETER_GHOSTSCRIPT_EXE`. Rat-Trap is optional: it is usable when `native:doctor` can find `rat-trap`, an explicit `NOMETER_RATTRAP_EXE`, or a Python package root at `NOMETER_RATTRAP_ROOT`. When that root contains `.venv`, NoMeter prefers the root-local Python before falling back to `PATH`.
 
 On Windows, install Ghostscript from the official Artifex installer interactively and point the destination at your local tool folder, for example `${NOMETER_ROOT}/tools/ghostscript/gs10.07.1`. If the executable lives somewhere else, set `NOMETER_GHOSTSCRIPT_EXE` to the absolute `gswin64c.exe` path. NoMeter does not bundle Ghostscript in this repository.
+
+Run:
+
+```powershell
+npm.cmd run native:ocr-preflight
+```
+
+to check the planned OCR toolchain without installing anything. The check is advisory by default so CI can keep the OCR path discoverable while Tesseract/OCRmyPDF remain planned engines. After installing local OCR tools, run:
+
+```powershell
+npm.cmd run native:ocr-preflight -- --strict
+```
+
+before wiring OCR commands into the app. Tesseract should be installed under the configured non-system tool folder, or exposed with `NOMETER_TESSERACT_EXE`, and should include `eng.traineddata` in a reachable `tessdata` folder. The [Tesseract installation docs](https://tesseract-ocr.github.io/tessdoc/Installation.html) point Windows users to the UB Mannheim Windows builds. [OCRmyPDF's Windows guidance](https://ocrmypdf.readthedocs.io/en/latest/installation.html) requires 64-bit Python, Tesseract, and Ghostscript; prefer a root-local virtual environment under `${NOMETER_OCRMYPDF_ROOT}` before promoting OCRmyPDF from planned to wired.
 
 `native:doctor` checks the optional engine roots above before falling back to `PATH`. Passing optional checks means the tool is discoverable on the developer machine. The UI marks Ghostscript and Rat-Trap as `Optional` and keeps Tesseract/OCRmyPDF as `Planned` until their native commands, sidecar policy, and sample/fixture paths exist.
 
@@ -92,5 +108,6 @@ Before Tesseract or OCRmyPDF is promoted from `Planned` to `Wired`, or before Gh
 - Add a dedicated Tauri command with structured arguments.
 - Add sidecar or local-tool discovery rules.
 - Keep work and save folders explicit and off the system drive.
+- Pass `native:ocr-preflight -- --strict` on the local OCR machine.
 - Add a deterministic sample or fixture path where practical.
 - Update `native:doctor`, the UI engine status, and release notes together.

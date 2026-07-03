@@ -38,8 +38,12 @@ const localQpdf = findFile(qpdfRoot, 'qpdf.exe')
 const localGhostscript = findFile(ghostscriptRoot, 'gswin64c.exe') || findFile(ghostscriptRoot, 'gs.exe')
 const localRatTrap = envValue('NOMETER_RATTRAP_EXE', 'OPENFORGE_RATTRAP_EXE') || findFile(ratTrapRoot, 'rat-trap.exe')
 const localRatTrapPackage = existsSync(join(ratTrapRoot, 'rat_trap', 'cli.py'))
-const localTesseract = findFile(tesseractRoot, 'tesseract.exe')
-const localOcrmypdf = findFile(ocrmypdfRoot, 'ocrmypdf.exe') || findFile(ocrmypdfRoot, 'ocrmypdf')
+const localTesseract =
+  envValue('NOMETER_TESSERACT_EXE', 'OPENFORGE_TESSERACT_EXE') || findFile(tesseractRoot, 'tesseract.exe')
+const localOcrmypdf =
+  envValue('NOMETER_OCRMYPDF_EXE', 'OPENFORGE_OCRMYPDF_EXE') ||
+  findFile(ocrmypdfRoot, 'ocrmypdf.exe') ||
+  findFile(ocrmypdfRoot, 'ocrmypdf')
 const checks = [
   { name: 'Node.js', command: 'node', args: ['--version'], required: true },
   npmCheck(),

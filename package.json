@@ -18,6 +18,7 @@
     "native:sync-sidecars": "npm.cmd run native:sync-ffmpeg && npm.cmd run native:sync-pandoc && npm.cmd run native:sync-qpdf",
     "native:relocate-tauri-cache": "node scripts/relocate-tauri-cache.mjs",
     "native:doctor": "node scripts/native-doctor.mjs",
+    "native:ocr-preflight": "node scripts/ocr-preflight.mjs",
     "release:checksums": "node scripts/release-checksums.mjs",
     "release:provenance": "node scripts/release-provenance.mjs",
     "release:installers": "node scripts/release-installers.mjs",

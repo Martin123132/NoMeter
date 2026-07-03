@@ -117,6 +117,10 @@ const requiredRunSteps = [
     label: 'guided flow regression guard',
     snippets: ['Run guided flow regression guard', 'run: npm run qa:guided-flow-check'],
   },
+  {
+    label: 'OCR preflight planning check',
+    snippets: ['Run OCR preflight planning check', 'run: npm run native:ocr-preflight'],
+  },
 ]
 
 for (const requirement of requiredRunSteps) {

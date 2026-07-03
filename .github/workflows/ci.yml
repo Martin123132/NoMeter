@@ -125,6 +125,13 @@ jobs:
           NOMETER_SKIP_REQUIRED: "1"
         run: npm run native:doctor
 
+      - name: Run OCR preflight planning check
+        env:
+          NOMETER_ROOT: ${{ github.workspace }}
+          NOMETER_TOOLCHAIN_ROOT: ${{ github.workspace }}/toolchains
+          NOMETER_TEMP: ${{ github.workspace }}/tmp
+        run: npm run native:ocr-preflight
+
   ci-maintenance-check:
     name: CI maintenance check
     runs-on: ubuntu-latest

@@ -165,15 +165,18 @@ npm run license:positioning-check
 npm run qa:guided-flow-check
 npm run build
 npm run native:doctor
+npm run native:ocr-preflight
 ```
 
 `native:doctor` verifies local prerequisites and emits useful warnings for optional engines not yet bundled.
+`native:ocr-preflight` keeps the planned Tesseract/OCRmyPDF path visible without requiring OCR tools in CI; run it with `-- --strict` after installing local OCR binaries.
 `license:positioning-check` keeps public wording aligned with the non-commercial public licence and commercial-use boundary.
 `qa:guided-flow-check` keeps the guided conversion path, mixed-file recipe switching, mobile queue cards, and native folder guardrails from drifting.
 
 ### Related scripts
 
 - `npm run native:sync-sidecars`: sync local native sidecars.
+- `npm run native:ocr-preflight`: check planned local OCR prerequisites and D-drive posture.
 - `npm run native:relocate-tauri-cache`: copy bundler cache back to configured toolchain-safe path.
 
 ## License
