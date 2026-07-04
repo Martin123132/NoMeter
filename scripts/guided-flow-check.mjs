@@ -166,6 +166,17 @@ checkText(appText, appPath, 'Ghostscript PDF compression route', [
   'Install Ghostscript or set NOMETER_GHOSTSCRIPT_ROOT',
 ])
 
+checkText(appText, appPath, 'Tesseract OCR image text route', [
+  "'ocr-image-text'",
+  "label: 'OCR image text'",
+  'Tesseract TXT',
+  'Plain text OCR',
+  'ocrImageToTextFile(job.file, nativeFolders)',
+  'Tesseract OCR text',
+  'Tesseract OCR needs the NoMeter desktop app and a local Tesseract install.',
+  'Install Tesseract or set NOMETER_TESSERACT_ROOT',
+])
+
 checkText(cssText, cssPath, 'responsive guided flow layout', [
   '.mission-route-radar',
   '.route-status',

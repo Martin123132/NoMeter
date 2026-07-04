@@ -57,6 +57,14 @@ struct PdfRasterizeRequest {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+struct OcrTextRequest {
+    file_name: String,
+    bytes_base64: String,
+    folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct RatTrapArchiveRequest {
     files: Vec<NativeInputFile>,
     folders: Option<NativeFolders>,
@@ -101,7 +109,10 @@ struct GhostscriptRasterConfig {
 }
 
 #[tauri::command]
-async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Result<NativeArtifact, String> {
+async fn transcode_media(
+    app: AppHandle,
+    request: FfmpegTranscodeRequest,
+) -> Result<NativeArtifact, String> {
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
         .map_err(|error| format!("Could not decode media input: {error}"))?;
@@ -113,7 +124,8 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
     let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create work folder: {error}"))?;
 
     let stem = safe_stem(&request.file_name);
     let input_extension = safe_extension(&request.file_name).unwrap_or_else(|| "media".into());
@@ -127,7 +139,8 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
     let input_path = job_dir.join(format!("input.{input_extension}"));
     let output_path = job_dir.join(&output_name);
 
-    fs::write(&input_path, input_bytes).map_err(|error| format!("Could not write media input: {error}"))?;
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write media input: {error}"))?;
 
     let input_arg = input_path
         .to_str()
@@ -172,10 +185,14 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
     let log = compact_log(&format!("{stdout}\n{stderr}"));
 
     if !output.status.success() {
-        return Err(format!("FFmpeg failed with status {:?}: {log}", output.status.code()));
+        return Err(format!(
+            "FFmpeg failed with status {:?}: {log}",
+            output.status.code()
+        ));
     }
 
-    let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read FFmpeg output: {error}"))?;
+    let output_bytes =
+        fs::read(&output_path).map_err(|error| format!("Could not read FFmpeg output: {error}"))?;
     let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
@@ -188,7 +205,10 @@ async fn transcode_media(app: AppHandle, request: FfmpegTranscodeRequest) -> Res
 }
 
 #[tauri::command]
-async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<NativeArtifact, String> {
+async fn optimize_pdf(
+    app: AppHandle,
+    request: PdfOptimizeRequest,
+) -> Result<NativeArtifact, String> {
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
         .map_err(|error| format!("Could not decode PDF input: {error}"))?;
@@ -200,14 +220,16 @@ async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<Nat
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
     let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create work folder: {error}"))?;
 
     let stem = safe_stem(&request.file_name);
     let output_name = format!("{stem}-optimized.pdf");
     let input_path = job_dir.join("input.pdf");
     let output_path = job_dir.join(&output_name);
 
-    fs::write(&input_path, input_bytes).map_err(|error| format!("Could not write PDF input: {error}"))?;
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write PDF input: {error}"))?;
 
     let input_arg = input_path
         .to_str()
@@ -238,10 +260,14 @@ async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<Nat
     let log = compact_log(&format!("{stdout}\n{stderr}"));
 
     if !output.status.success() {
-        return Err(format!("qpdf failed with status {:?}: {log}", output.status.code()));
+        return Err(format!(
+            "qpdf failed with status {:?}: {log}",
+            output.status.code()
+        ));
     }
 
-    let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read qpdf output: {error}"))?;
+    let output_bytes =
+        fs::read(&output_path).map_err(|error| format!("Could not read qpdf output: {error}"))?;
     let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
@@ -254,7 +280,9 @@ async fn optimize_pdf(app: AppHandle, request: PdfOptimizeRequest) -> Result<Nat
 }
 
 #[tauri::command]
-async fn compress_pdf_with_ghostscript(request: PdfCompressRequest) -> Result<NativeArtifact, String> {
+async fn compress_pdf_with_ghostscript(
+    request: PdfCompressRequest,
+) -> Result<NativeArtifact, String> {
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
         .map_err(|error| format!("Could not decode PDF input: {error}"))?;
@@ -268,14 +296,16 @@ async fn compress_pdf_with_ghostscript(request: PdfCompressRequest) -> Result<Na
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
     let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create work folder: {error}"))?;
 
     let stem = safe_stem(&request.file_name);
     let output_name = format!("{stem}-compressed.pdf");
     let input_path = job_dir.join("input.pdf");
     let output_path = job_dir.join(&output_name);
 
-    fs::write(&input_path, input_bytes).map_err(|error| format!("Could not write PDF input: {error}"))?;
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write PDF input: {error}"))?;
 
     let input_arg = input_path
         .to_str()
@@ -317,8 +347,8 @@ async fn compress_pdf_with_ghostscript(request: PdfCompressRequest) -> Result<Na
         ));
     }
 
-    let output_bytes =
-        fs::read(&output_path).map_err(|error| format!("Could not read Ghostscript output: {error}"))?;
+    let output_bytes = fs::read(&output_path)
+        .map_err(|error| format!("Could not read Ghostscript output: {error}"))?;
     let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
@@ -355,10 +385,7 @@ async fn rasterize_pdf_with_ghostscript(
     let stem = safe_stem(&request.file_name);
     let output_name = format!("{stem}-pages.zip");
     let input_path = job_dir.join("input.pdf");
-    let output_pattern = pages_dir.join(format!(
-        "{stem}-page-%03d.{}",
-        raster_config.extension
-    ));
+    let output_pattern = pages_dir.join(format!("{stem}-page-%03d.{}", raster_config.extension));
     let zip_path = job_dir.join(&output_name);
 
     fs::write(&input_path, input_bytes)
@@ -411,8 +438,8 @@ async fn rasterize_pdf_with_ghostscript(
     }
 
     write_zip_archive(&zip_path, &page_paths, &pages_dir)?;
-    let output_bytes =
-        fs::read(&zip_path).map_err(|error| format!("Could not read Ghostscript ZIP output: {error}"))?;
+    let output_bytes = fs::read(&zip_path)
+        .map_err(|error| format!("Could not read Ghostscript ZIP output: {error}"))?;
     let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
     let log = compact_log(&format!(
         "{stdout}\n{stderr}\nRasterized {} {} page{} at {dpi} DPI.",
@@ -431,7 +458,81 @@ async fn rasterize_pdf_with_ghostscript(
 }
 
 #[tauri::command]
-async fn compress_files_with_rat_trap(request: RatTrapArchiveRequest) -> Result<NativeArtifact, String> {
+async fn ocr_image_to_text(request: OcrTextRequest) -> Result<NativeArtifact, String> {
+    let tesseract = tesseract_command_spec()?;
+    let input_bytes = general_purpose::STANDARD
+        .decode(request.bytes_base64.as_bytes())
+        .map_err(|error| format!("Could not decode OCR input: {error}"))?;
+
+    if input_bytes.is_empty() {
+        return Err("The selected image file was empty.".into());
+    }
+
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create OCR work folder: {error}"))?;
+
+    let stem = safe_stem(&request.file_name);
+    let input_extension = safe_extension(&request.file_name).unwrap_or_else(|| "png".into());
+    let output_name = format!("{stem}-ocr.txt");
+    let input_path = job_dir.join(format!("input.{input_extension}"));
+    let output_base = job_dir.join(format!("{stem}-ocr"));
+    let output_path = output_base.with_extension("txt");
+
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write OCR input: {error}"))?;
+
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "OCR input path contains unsupported characters.".to_string())?;
+    let output_base_arg = output_base
+        .to_str()
+        .ok_or_else(|| "OCR output path contains unsupported characters.".to_string())?;
+
+    let mut command = Command::new(&tesseract.executable);
+    command.current_dir(&job_dir);
+    command.args(&tesseract.prefix_args);
+    command.args([input_arg, output_base_arg, "-l", "eng"]);
+    for (name, value) in &tesseract.env {
+        command.env(name, value);
+    }
+
+    let output = command.output().map_err(|error| {
+        format!(
+            "Tesseract is unavailable: {error}. Install Tesseract or set NOMETER_TESSERACT_EXE/NOMETER_TESSERACT_ROOT."
+        )
+    })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let log = compact_log(&format!("{stdout}\n{stderr}"));
+
+    if !output.status.success() {
+        return Err(format!(
+            "Tesseract failed with status {:?}: {log}",
+            output.status.code()
+        ));
+    }
+
+    let output_bytes = fs::read(&output_path)
+        .map_err(|error| format!("Could not read Tesseract OCR output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "text/plain".into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+        saved_path,
+    })
+}
+
+#[tauri::command]
+async fn compress_files_with_rat_trap(
+    request: RatTrapArchiveRequest,
+) -> Result<NativeArtifact, String> {
     if request.files.is_empty() {
         return Err("Add at least one file before running Rat-Trap compression.".into());
     }
@@ -510,7 +611,9 @@ async fn compress_files_with_rat_trap(request: RatTrapArchiveRequest) -> Result<
 }
 
 #[tauri::command]
-async fn extract_rat_trap_archive(request: RatTrapSingleArchiveRequest) -> Result<NativeArtifact, String> {
+async fn extract_rat_trap_archive(
+    request: RatTrapSingleArchiveRequest,
+) -> Result<NativeArtifact, String> {
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
@@ -551,7 +654,9 @@ async fn extract_rat_trap_archive(request: RatTrapSingleArchiveRequest) -> Resul
 }
 
 #[tauri::command]
-async fn inspect_rat_trap_archive(request: RatTrapSingleArchiveRequest) -> Result<NativeArtifact, String> {
+async fn inspect_rat_trap_archive(
+    request: RatTrapSingleArchiveRequest,
+) -> Result<NativeArtifact, String> {
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
@@ -581,7 +686,9 @@ async fn inspect_rat_trap_archive(request: RatTrapSingleArchiveRequest) -> Resul
 }
 
 #[tauri::command]
-async fn export_rat_trap_archive_to_zip(request: RatTrapSingleArchiveRequest) -> Result<NativeArtifact, String> {
+async fn export_rat_trap_archive_to_zip(
+    request: RatTrapSingleArchiveRequest,
+) -> Result<NativeArtifact, String> {
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
@@ -599,8 +706,8 @@ async fn export_rat_trap_archive_to_zip(request: RatTrapSingleArchiveRequest) ->
         .to_str()
         .ok_or_else(|| "Rat-Trap ZIP path contains unsupported characters.".to_string())?;
     let log = run_rat_trap_command(&rat_trap, &job_dir, &["export-zip", input_arg, output_arg])?;
-    let output_bytes =
-        fs::read(&output_path).map_err(|error| format!("Could not read Rat-Trap ZIP output: {error}"))?;
+    let output_bytes = fs::read(&output_path)
+        .map_err(|error| format!("Could not read Rat-Trap ZIP output: {error}"))?;
     let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
@@ -613,7 +720,10 @@ async fn export_rat_trap_archive_to_zip(request: RatTrapSingleArchiveRequest) ->
 }
 
 #[tauri::command]
-async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Result<NativeArtifact, String> {
+async fn convert_document(
+    app: AppHandle,
+    request: DocumentConvertRequest,
+) -> Result<NativeArtifact, String> {
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
         .map_err(|error| format!("Could not decode document input: {error}"))?;
@@ -628,7 +738,8 @@ async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Re
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
     let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir).map_err(|error| format!("Could not create work folder: {error}"))?;
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create work folder: {error}"))?;
 
     let stem = safe_stem(&request.file_name);
     let input_extension = safe_extension(&request.file_name).unwrap_or_else(|| "txt".into());
@@ -636,7 +747,8 @@ async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Re
     let input_path = job_dir.join(format!("input.{input_extension}"));
     let output_path = job_dir.join(&output_name);
 
-    fs::write(&input_path, input_bytes).map_err(|error| format!("Could not write document input: {error}"))?;
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write document input: {error}"))?;
 
     let input_arg = input_path
         .to_str()
@@ -666,10 +778,14 @@ async fn convert_document(app: AppHandle, request: DocumentConvertRequest) -> Re
     let log = compact_log(&format!("{stdout}\n{stderr}"));
 
     if !output.status.success() {
-        return Err(format!("Pandoc failed with status {:?}: {log}", output.status.code()));
+        return Err(format!(
+            "Pandoc failed with status {:?}: {log}",
+            output.status.code()
+        ));
     }
 
-    let output_bytes = fs::read(&output_path).map_err(|error| format!("Could not read Pandoc output: {error}"))?;
+    let output_bytes =
+        fs::read(&output_path).map_err(|error| format!("Could not read Pandoc output: {error}"))?;
     let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
 
     Ok(NativeArtifact {
@@ -693,7 +809,10 @@ struct ExternalCommandSpec {
     env: Vec<(String, String)>,
 }
 
-fn write_rat_trap_archive_input(request: &RatTrapSingleArchiveRequest, job_dir: &Path) -> Result<PathBuf, String> {
+fn write_rat_trap_archive_input(
+    request: &RatTrapSingleArchiveRequest,
+    job_dir: &Path,
+) -> Result<PathBuf, String> {
     let extension = safe_extension(&request.file_name).unwrap_or_default();
     if extension != "gmw" {
         return Err("Choose a .gmw Rat-Trap archive.".into());
@@ -712,7 +831,11 @@ fn write_rat_trap_archive_input(request: &RatTrapSingleArchiveRequest, job_dir: 
     Ok(input_path)
 }
 
-fn run_rat_trap_command(rat_trap: &ExternalCommandSpec, job_dir: &Path, args: &[&str]) -> Result<String, String> {
+fn run_rat_trap_command(
+    rat_trap: &ExternalCommandSpec,
+    job_dir: &Path,
+    args: &[&str],
+) -> Result<String, String> {
     let mut command = Command::new(&rat_trap.executable);
     command.current_dir(job_dir);
     command.args(&rat_trap.prefix_args);
@@ -767,7 +890,12 @@ fn document_output_config(format: &str) -> Option<DocumentOutputConfig> {
 }
 
 fn ghostscript_pdf_preset(value: Option<&str>) -> Result<&'static str, String> {
-    match value.unwrap_or("ebook").trim().to_ascii_lowercase().as_str() {
+    match value
+        .unwrap_or("ebook")
+        .trim()
+        .to_ascii_lowercase()
+        .as_str()
+    {
         "screen" => Ok("/screen"),
         "ebook" => Ok("/ebook"),
         "printer" => Ok("/printer"),
@@ -789,7 +917,9 @@ fn ghostscript_raster_config(value: Option<&str>) -> Result<GhostscriptRasterCon
             extension: "jpg",
             description: "JPEG",
         }),
-        other => Err(format!("Unsupported Ghostscript raster output format: {other}")),
+        other => Err(format!(
+            "Unsupported Ghostscript raster output format: {other}"
+        )),
     }
 }
 
@@ -866,6 +996,107 @@ fn rat_trap_command_spec() -> Result<ExternalCommandSpec, String> {
     })
 }
 
+fn tesseract_command_spec() -> Result<ExternalCommandSpec, String> {
+    for env_name in ["NOMETER_TESSERACT_EXE", "OPENFORGE_TESSERACT_EXE"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let path = PathBuf::from(trimmed);
+            if !path.is_absolute() {
+                return Err(format!("{env_name} must be an absolute executable path."));
+            }
+            if !path.exists() {
+                return Err(format!("{env_name} does not exist: {trimmed}"));
+            }
+
+            return Ok(ExternalCommandSpec {
+                executable: path.to_string_lossy().to_string(),
+                prefix_args: Vec::new(),
+                env: tesseract_env_for_executable(&path),
+            });
+        }
+    }
+
+    for root in tesseract_roots() {
+        if let Some(path) = find_first_named_file(&root, &tesseract_executable_names(), 0) {
+            return Ok(ExternalCommandSpec {
+                executable: path.to_string_lossy().to_string(),
+                prefix_args: Vec::new(),
+                env: tesseract_env_for_root(&root),
+            });
+        }
+    }
+
+    Ok(ExternalCommandSpec {
+        executable: default_tesseract_command().into(),
+        prefix_args: Vec::new(),
+        env: Vec::new(),
+    })
+}
+
+fn tesseract_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for env_name in ["NOMETER_TESSERACT_ROOT", "OPENFORGE_TESSERACT_ROOT"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                roots.push(PathBuf::from(trimmed));
+            }
+        }
+    }
+
+    roots.push(
+        PathBuf::from(r"D:\Codex\OpenForge")
+            .join("tools")
+            .join("tesseract"),
+    );
+    roots
+}
+
+fn tesseract_env_for_executable(path: &Path) -> Vec<(String, String)> {
+    if let Some(parent) = path.parent() {
+        return tesseract_env_for_root(parent);
+    }
+
+    Vec::new()
+}
+
+fn tesseract_env_for_root(root: &Path) -> Vec<(String, String)> {
+    let tessdata = root.join("tessdata");
+    if tessdata.exists() {
+        return vec![(
+            "TESSDATA_PREFIX".into(),
+            tessdata.to_string_lossy().to_string(),
+        )];
+    }
+
+    Vec::new()
+}
+
+#[cfg(windows)]
+fn tesseract_executable_names() -> Vec<&'static str> {
+    vec!["tesseract.exe", "tesseract"]
+}
+
+#[cfg(not(windows))]
+fn tesseract_executable_names() -> Vec<&'static str> {
+    vec!["tesseract"]
+}
+
+#[cfg(windows)]
+fn default_tesseract_command() -> &'static str {
+    "tesseract"
+}
+
+#[cfg(not(windows))]
+fn default_tesseract_command() -> &'static str {
+    "tesseract"
+}
+
 fn rat_trap_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
 
@@ -920,13 +1151,24 @@ fn ghostscript_roots() -> Vec<PathBuf> {
         }
     }
 
-    roots.push(PathBuf::from(r"D:\Codex\OpenForge").join("tools").join("ghostscript"));
+    roots.push(
+        PathBuf::from(r"D:\Codex\OpenForge")
+            .join("tools")
+            .join("ghostscript"),
+    );
     roots
 }
 
 #[cfg(windows)]
 fn ghostscript_executable_names() -> Vec<&'static str> {
-    vec!["gswin64c.exe", "gswin32c.exe", "gs.exe", "gswin64c", "gswin32c", "gs"]
+    vec![
+        "gswin64c.exe",
+        "gswin32c.exe",
+        "gs.exe",
+        "gswin64c",
+        "gswin32c",
+        "gs",
+    ]
 }
 
 #[cfg(not(windows))]
@@ -952,9 +1194,16 @@ fn find_first_named_file(root: &Path, names: &[&str], depth: usize) -> Option<Pa
     let entries = fs::read_dir(root).ok()?;
     for entry in entries.flatten() {
         let path = entry.path();
-        let file_name = path.file_name().and_then(|value| value.to_str()).unwrap_or("");
+        let file_name = path
+            .file_name()
+            .and_then(|value| value.to_str())
+            .unwrap_or("");
 
-        if path.is_file() && names.iter().any(|name| file_name.eq_ignore_ascii_case(name)) {
+        if path.is_file()
+            && names
+                .iter()
+                .any(|name| file_name.eq_ignore_ascii_case(name))
+        {
             return Some(path);
         }
 
@@ -996,8 +1245,8 @@ fn write_zip_archive(zip_path: &Path, files: &[PathBuf], base_dir: &Path) -> Res
     let zip_file =
         File::create(zip_path).map_err(|error| format!("Could not create ZIP output: {error}"))?;
     let mut zip = zip::ZipWriter::new(zip_file);
-    let options = zip::write::FileOptions::default()
-        .compression_method(zip::CompressionMethod::Deflated);
+    let options =
+        zip::write::FileOptions::default().compression_method(zip::CompressionMethod::Deflated);
     let mut buffer = Vec::new();
 
     for file_path in files {
@@ -1025,7 +1274,9 @@ fn write_zip_archive(zip_path: &Path, files: &[PathBuf], base_dir: &Path) -> Res
 }
 
 fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String> {
-    if let Some(path) = configured_folder(folders.and_then(|value| value.work_dir.as_deref()), "work")? {
+    if let Some(path) =
+        configured_folder(folders.and_then(|value| value.work_dir.as_deref()), "work")?
+    {
         return Ok(path);
     }
 
@@ -1046,7 +1297,10 @@ fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String
 }
 
 fn openforge_output_dir(folders: Option<&NativeFolders>) -> Result<Option<PathBuf>, String> {
-    if let Some(path) = configured_folder(folders.and_then(|value| value.output_dir.as_deref()), "save")? {
+    if let Some(path) = configured_folder(
+        folders.and_then(|value| value.output_dir.as_deref()),
+        "save",
+    )? {
         return Ok(Some(path));
     }
 
@@ -1106,14 +1360,20 @@ fn is_system_drive_path(_path: &Path) -> bool {
     false
 }
 
-fn persist_output(output_dir: Option<PathBuf>, output_name: &str, output_bytes: &[u8]) -> Result<Option<String>, String> {
+fn persist_output(
+    output_dir: Option<PathBuf>,
+    output_name: &str,
+    output_bytes: &[u8],
+) -> Result<Option<String>, String> {
     let Some(output_dir) = output_dir else {
         return Ok(None);
     };
 
-    fs::create_dir_all(&output_dir).map_err(|error| format!("Could not create save folder: {error}"))?;
+    fs::create_dir_all(&output_dir)
+        .map_err(|error| format!("Could not create save folder: {error}"))?;
     let saved_path = unique_output_path(&output_dir, output_name);
-    fs::write(&saved_path, output_bytes).map_err(|error| format!("Could not save output copy: {error}"))?;
+    fs::write(&saved_path, output_bytes)
+        .map_err(|error| format!("Could not save output copy: {error}"))?;
 
     Ok(Some(saved_path.to_string_lossy().to_string()))
 }
@@ -1143,7 +1403,10 @@ fn unique_output_path(output_dir: &Path, output_name: &str) -> PathBuf {
         }
     }
 
-    output_dir.join(format!("{stem}-{}", unique_job_id().unwrap_or_else(|_| "nometer-output".into())))
+    output_dir.join(format!(
+        "{stem}-{}",
+        unique_job_id().unwrap_or_else(|_| "nometer-output".into())
+    ))
 }
 
 fn unique_job_id() -> Result<String, String> {
@@ -1250,6 +1513,7 @@ fn main() {
             compress_pdf_with_ghostscript,
             rasterize_pdf_with_ghostscript,
             compress_files_with_rat_trap,
+            ocr_image_to_text,
             inspect_rat_trap_archive,
             extract_rat_trap_archive,
             export_rat_trap_archive_to_zip

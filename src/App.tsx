@@ -46,6 +46,7 @@ import {
   getNativeRuntimeStatus,
   inspectRatTrapArchive,
   nativeEngineCatalog,
+  ocrImageToTextFile,
   optimizePdfFile,
   pickNativeFolder,
   rasterizePdfFile,
@@ -71,6 +72,7 @@ type ToolId =
   | 'pdf-optimize'
   | 'pdf-compress'
   | 'pdf-rasterize'
+  | 'ocr-image-text'
   | 'document-convert'
   | 'native-engine'
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
@@ -156,7 +158,7 @@ const navItems: NavItem[] = [
   { id: 'images', label: 'Images', icon: Image, tool: 'image-convert' },
   { id: 'archive', label: 'Archive', icon: Archive, tool: 'archive-zip' },
   { id: 'media', label: 'Audio/Video', icon: Video, tool: 'native-engine' },
-  { id: 'ocr', label: 'OCR', icon: Captions, tool: 'native-engine' },
+  { id: 'ocr', label: 'OCR', icon: Captions, tool: 'ocr-image-text' },
   { id: 'recipes', label: 'Recipes', icon: Settings2, tool: 'image-convert' },
   { id: 'history', label: 'History', icon: History, tool: 'image-convert' },
 ]
@@ -229,6 +231,12 @@ const toolOptions: ToolOption[] = [
     icon: Image,
   },
   {
+    id: 'ocr-image-text',
+    label: 'OCR image text',
+    detail: 'Tesseract TXT',
+    icon: Captions,
+  },
+  {
     id: 'document-convert',
     label: 'Documents',
     detail: 'MD, HTML, DOCX, EPUB',
@@ -299,6 +307,11 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
     source: 'PDFs that need page images',
     output: 'ZIP of PNG/JPG pages',
     focus: 'Use the optional local Ghostscript path in desktop mode.',
+  },
+  'ocr-image-text': {
+    source: 'Scanned image files',
+    output: 'Plain text OCR',
+    focus: 'Use the local Tesseract path in desktop mode.',
   },
   'document-convert': {
     source: 'Markdown, HTML, DOCX, ODT, RTF, or text',
@@ -435,6 +448,7 @@ function App() {
       activeTool === 'pdf-optimize' ||
       activeTool === 'pdf-compress' ||
       activeTool === 'pdf-rasterize' ||
+      activeTool === 'ocr-image-text' ||
       isRatTrapTool(activeTool)) &&
     !nativeStatus.available
   const missionFolderWarning = requiresDesktopTool(activeTool) ? nativeFolderIssue : null
@@ -1367,6 +1381,14 @@ function App() {
       return
     }
 
+    if (activeTool === 'ocr-image-text' && !nativeStatus.available) {
+      setBanner({
+        tone: 'warning',
+        text: 'Tesseract OCR needs the NoMeter desktop app and a local Tesseract install.',
+      })
+      return
+    }
+
     if (isRatTrapTool(activeTool) && !nativeStatus.available) {
       setBanner({
         tone: 'warning',
@@ -1405,11 +1427,13 @@ function App() {
                       ? 'Add Markdown, HTML, DOCX, ODT, RTF, or text files before running Pandoc conversion.'
                       : activeTool === 'pdf-optimize'
                         ? 'Add one or more PDF files before running qpdf optimization.'
-                        : activeTool === 'pdf-compress'
-                          ? 'Add one or more PDF files before running Ghostscript compression.'
-                          : activeTool === 'pdf-rasterize'
-                            ? 'Add one or more PDF files before running Ghostscript rasterization.'
-                          : 'Add one or more PDF files before running this PDF job.',
+                      : activeTool === 'pdf-compress'
+                        ? 'Add one or more PDF files before running Ghostscript compression.'
+                        : activeTool === 'pdf-rasterize'
+                          ? 'Add one or more PDF files before running Ghostscript rasterization.'
+                          : activeTool === 'ocr-image-text'
+                            ? 'Add one or more image files before running Tesseract OCR.'
+                            : 'Add one or more PDF files before running this PDF job.',
       })
       return
     }
@@ -1460,6 +1484,10 @@ function App() {
 
       if (activeTool === 'pdf-rasterize') {
         await runPdfRasterize(runnableJobs)
+      }
+
+      if (activeTool === 'ocr-image-text') {
+        await runOcrImageText(runnableJobs)
       }
 
       if (activeTool === 'native-engine') {
@@ -1903,6 +1931,45 @@ function App() {
         completed > 0
           ? `${completed} media file${completed === 1 ? '' : 's'} converted with FFmpeg.`
           : 'No FFmpeg exports were created.',
+    })
+  }
+
+  const runOcrImageText = async (compatibleJobs: QueueJob[]) => {
+    let completed = 0
+
+    for (const job of compatibleJobs) {
+      updateJob(job.id, {
+        status: 'running',
+        progress: 28,
+        message: 'Reading image text with local Tesseract',
+      })
+
+      try {
+        const result = await ocrImageToTextFile(job.file, nativeFolders)
+        const artifact = createArtifact(result.blob, result.name, 'Tesseract OCR text', 1, result.savedPath)
+        setExports((current) => [artifact, ...current])
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: nativeOutputMessage(result, 'OCR text ready'),
+          outputName: result.name,
+        })
+        completed += 1
+      } catch (error) {
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'Tesseract OCR failed.',
+        })
+      }
+    }
+
+    setBanner({
+      tone: completed > 0 ? 'success' : 'danger',
+      text:
+        completed > 0
+          ? `${completed} image${completed === 1 ? '' : 's'} read with Tesseract OCR.`
+          : 'No OCR text exports were created. Install Tesseract or set NOMETER_TESSERACT_ROOT.',
     })
   }
 
@@ -3017,11 +3084,16 @@ function App() {
                       </button>
                     ))}
                   </div>
-                  <div className="pdf-output">
-                    <Image size={18} />
-                    <span>{pdfRasterFormat.toUpperCase()} page ZIP</span>
-                  </div>
-                </>
+                <div className="pdf-output">
+                  <Image size={18} />
+                  <span>{pdfRasterFormat.toUpperCase()} page ZIP</span>
+                </div>
+              </>
+              ) : activeTool === 'ocr-image-text' ? (
+                <div className="pdf-output">
+                  <Captions size={18} />
+                  <span>Text file</span>
+                </div>
               ) : activeTool === 'archive-zip' ? (
                 <div className="pdf-output">
                   <Archive size={18} />
@@ -3388,6 +3460,7 @@ function isCompatibleForTool(job: QueueJob, tool: ToolId) {
   if (tool === 'pdf-optimize') return job.kind === 'pdf'
   if (tool === 'pdf-compress') return job.kind === 'pdf'
   if (tool === 'pdf-rasterize') return job.kind === 'pdf'
+  if (tool === 'ocr-image-text') return job.kind === 'image'
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'
   return false
@@ -3466,6 +3539,7 @@ function requiresDesktopTool(tool: ToolId) {
     tool === 'pdf-optimize' ||
     tool === 'pdf-compress' ||
     tool === 'pdf-rasterize' ||
+    tool === 'ocr-image-text' ||
     isRatTrapTool(tool)
   )
 }

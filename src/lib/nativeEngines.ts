@@ -87,10 +87,10 @@ export const nativeEngineCatalog: NativeEngine[] = [
   {
     id: 'tesseract',
     name: 'Tesseract',
-    role: 'planned offline OCR recognition',
+    role: 'offline image text recognition',
     command: 'tesseract',
-    sidecarName: 'tesseract',
-    status: 'planned',
+    sidecarName: 'local Tesseract',
+    status: 'optional',
   },
 ]
 
@@ -112,7 +112,7 @@ export async function getNativeRuntimeStatus(): Promise<NativeRuntimeStatus> {
     return {
       available: true,
       label: 'Desktop bridge',
-      detail: 'Tauri bridge loaded. FFmpeg, Pandoc, qpdf, optional Ghostscript, and optional Rat-Trap jobs are available in the desktop app.',
+      detail: 'Tauri bridge loaded. FFmpeg, Pandoc, qpdf, Tesseract, optional Ghostscript, and optional Rat-Trap jobs are available in the desktop app.',
     }
   } catch {
     return {
@@ -287,6 +287,34 @@ export async function rasterizePdfFile(
       bytesBase64: await fileToBase64(file),
       outputFormat: options.format,
       dpi: options.dpi,
+      folders: normalizeNativeFolders(folders),
+    },
+  })
+
+  return {
+    name: artifact.name,
+    blob: base64ToBlob(artifact.bytesBase64, artifact.mimeType),
+    log: artifact.log,
+    savedPath: artifact.savedPath,
+  }
+}
+
+export async function ocrImageToTextFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Tesseract OCR requires the NoMeter desktop app.')
+  }
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  const artifact = await invoke<{
+    name: string
+    mimeType: string
+    bytesBase64: string
+    log: string
+    savedPath?: string
+  }>('ocr_image_to_text', {
+    request: {
+      fileName: file.name,
+      bytesBase64: await fileToBase64(file),
       folders: normalizeNativeFolders(folders),
     },
   })

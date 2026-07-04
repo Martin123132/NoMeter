@@ -42,6 +42,7 @@ See [`docs/first-run.md`](docs/first-run.md) for the short user guide and [`docs
   - Pandoc: document output to HTML, DOCX, Markdown, EPUB.
   - qpdf: PDF repair/compression/linearization.
   - Ghostscript: optional local PDF compression when installed/configured.
+  - Tesseract: local image-to-text OCR when installed/configured.
   - Rat-Trap: optional local GMW archive packing, metadata inspection, extraction, and ZIP export when installed/configured.
 - Configure native work and save directories (with defaults that can be set to avoid system-drive usage).
 
@@ -101,6 +102,7 @@ See [`docs/installer-packaging.md`](docs/installer-packaging.md) before includin
 - `native-engine`: audio/video conversion with FFmpeg.
 - `document-convert`: document conversion with Pandoc.
 - `pdf-optimize`: PDF repair/compression with qpdf.
+- `ocr-image-text`: image-to-text OCR with Tesseract.
 
 ### Runtime folders
 
@@ -150,8 +152,8 @@ See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md)
 
 - Browser core is stable (images/ZIP/PDF merge/split).
 - Native engine adapters (FFmpeg, Pandoc, qpdf) are wired and queue-integrated.
-- Ghostscript PDF compression/rasterization and Rat-Trap GMW archive workflows are available as optional local desktop engines.
-- Remaining roadmap focuses on OCR support and richer document formats.
+- Ghostscript PDF compression/rasterization, Tesseract image OCR, and Rat-Trap GMW archive workflows are available as local desktop engines.
+- Remaining roadmap focuses on searchable-PDF OCR and richer document formats.
 
 Full roadmap details live in [`ROADMAP.md`](ROADMAP.md).
 
