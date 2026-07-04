@@ -11,7 +11,7 @@ NoMeter's browser MVP already handles image conversion, ZIP bundling, PDF merge,
 | qpdf | PDF repair, linearization, structural operations | Wired |
 | Ghostscript | PDF compression through local `pdfwrite`, plus PDF page rasterization to PNG/JPEG ZIPs | Optional local engine |
 | Rat-Trap | GMW archive packing, metadata inspection, extraction, and ZIP export | Optional local engine |
-| OCRmyPDF | Searchable scanned PDFs | Planned optional engine |
+| OCRmyPDF | Searchable scanned PDFs | Optional local engine |
 | Tesseract | OCR text recognition for image files | Optional local engine |
 
 ## Adapter Rules
@@ -103,9 +103,11 @@ The current Rat-Trap adapter accepts queued NoMeter files, writes them to a conf
 
 The current Tesseract adapter accepts image files, writes them to the configured work folder, runs a locally installed Tesseract executable with English language data, and copies the plain-text OCR output to the configured save folder. It does not upload images or bundle Tesseract.
 
+The current OCRmyPDF adapter accepts PDF files, writes them to the configured work folder, runs a locally installed OCRmyPDF executable with the configured Tesseract, Ghostscript, and qpdf paths, and copies the searchable PDF output to the configured save folder. It does not upload PDFs or bundle OCRmyPDF.
+
 ## Planned OCR/PDF Engine Rules
 
-Before OCRmyPDF is promoted from `Planned` to `Wired`, or before Ghostscript is promoted from optional-local to bundled:
+Before Ghostscript, Tesseract, or OCRmyPDF is promoted from optional-local to bundled:
 
 - Add a dedicated Tauri command with structured arguments.
 - Add sidecar or local-tool discovery rules.

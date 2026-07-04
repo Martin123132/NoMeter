@@ -1,6 +1,7 @@
 use base64::{engine::general_purpose, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::{
+    env,
     fs::{self, File},
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -58,6 +59,14 @@ struct PdfRasterizeRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct OcrTextRequest {
+    file_name: String,
+    bytes_base64: String,
+    folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OcrSearchablePdfRequest {
     file_name: String,
     bytes_base64: String,
     folders: Option<NativeFolders>,
@@ -523,6 +532,84 @@ async fn ocr_image_to_text(request: OcrTextRequest) -> Result<NativeArtifact, St
     Ok(NativeArtifact {
         name: output_name,
         mime_type: "text/plain".into(),
+        bytes_base64: general_purpose::STANDARD.encode(output_bytes),
+        log,
+        saved_path,
+    })
+}
+
+#[tauri::command]
+async fn ocr_searchable_pdf(request: OcrSearchablePdfRequest) -> Result<NativeArtifact, String> {
+    let ocrmypdf = ocrmypdf_command_spec()?;
+    let input_bytes = general_purpose::STANDARD
+        .decode(request.bytes_base64.as_bytes())
+        .map_err(|error| format!("Could not decode OCR PDF input: {error}"))?;
+
+    if input_bytes.is_empty() {
+        return Err("The selected PDF file was empty.".into());
+    }
+
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let output_dir = openforge_output_dir(request.folders.as_ref())?;
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create searchable PDF work folder: {error}"))?;
+
+    let stem = safe_stem(&request.file_name);
+    let output_name = format!("{stem}-searchable.pdf");
+    let input_path = job_dir.join("input.pdf");
+    let output_path = job_dir.join(&output_name);
+
+    fs::write(&input_path, input_bytes)
+        .map_err(|error| format!("Could not write OCR PDF input: {error}"))?;
+
+    let input_arg = input_path
+        .to_str()
+        .ok_or_else(|| "OCR PDF input path contains unsupported characters.".to_string())?;
+    let output_arg = output_path
+        .to_str()
+        .ok_or_else(|| "OCR PDF output path contains unsupported characters.".to_string())?;
+
+    let mut command = Command::new(&ocrmypdf.executable);
+    command.current_dir(&job_dir);
+    command.args(&ocrmypdf.prefix_args);
+    command.args([
+        "--language",
+        "eng",
+        "--output-type",
+        "pdf",
+        "--skip-text",
+        input_arg,
+        output_arg,
+    ]);
+    for (name, value) in &ocrmypdf.env {
+        command.env(name, value);
+    }
+
+    let output = command.output().map_err(|error| {
+        format!(
+            "OCRmyPDF is unavailable: {error}. Install OCRmyPDF or set NOMETER_OCRMYPDF_EXE/NOMETER_OCRMYPDF_ROOT."
+        )
+    })?;
+
+    let stdout = String::from_utf8_lossy(&output.stdout);
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    let log = compact_log(&format!("{stdout}\n{stderr}"));
+
+    if !output.status.success() {
+        return Err(format!(
+            "OCRmyPDF failed with status {:?}: {log}",
+            output.status.code()
+        ));
+    }
+
+    let output_bytes = fs::read(&output_path)
+        .map_err(|error| format!("Could not read searchable OCR PDF output: {error}"))?;
+    let saved_path = persist_output(output_dir, &output_name, &output_bytes)?;
+
+    Ok(NativeArtifact {
+        name: output_name,
+        mime_type: "application/pdf".into(),
         bytes_base64: general_purpose::STANDARD.encode(output_bytes),
         log,
         saved_path,
@@ -1037,6 +1124,210 @@ fn tesseract_command_spec() -> Result<ExternalCommandSpec, String> {
     })
 }
 
+fn ocrmypdf_command_spec() -> Result<ExternalCommandSpec, String> {
+    for env_name in ["NOMETER_OCRMYPDF_EXE", "OPENFORGE_OCRMYPDF_EXE"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let path = PathBuf::from(trimmed);
+            if !path.is_absolute() {
+                return Err(format!("{env_name} must be an absolute executable path."));
+            }
+            if !path.exists() {
+                return Err(format!("{env_name} does not exist: {trimmed}"));
+            }
+
+            return Ok(ExternalCommandSpec {
+                executable: path.to_string_lossy().to_string(),
+                prefix_args: Vec::new(),
+                env: ocr_external_env(Some(&path)),
+            });
+        }
+    }
+
+    for root in ocrmypdf_roots() {
+        if let Some(path) = find_first_named_file(&root, &ocrmypdf_executable_names(), 0) {
+            return Ok(ExternalCommandSpec {
+                executable: path.to_string_lossy().to_string(),
+                prefix_args: Vec::new(),
+                env: ocr_external_env(Some(&path)),
+            });
+        }
+    }
+
+    Ok(ExternalCommandSpec {
+        executable: default_ocrmypdf_command().into(),
+        prefix_args: Vec::new(),
+        env: ocr_external_env(None),
+    })
+}
+
+fn ocrmypdf_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for env_name in ["NOMETER_OCRMYPDF_ROOT", "OPENFORGE_OCRMYPDF_ROOT"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                roots.push(PathBuf::from(trimmed));
+            }
+        }
+    }
+
+    roots.push(
+        PathBuf::from(r"D:\Codex\OpenForge")
+            .join("tools")
+            .join("ocrmypdf"),
+    );
+    roots
+}
+
+#[cfg(windows)]
+fn ocrmypdf_executable_names() -> Vec<&'static str> {
+    vec!["ocrmypdf.exe", "ocrmypdf"]
+}
+
+#[cfg(not(windows))]
+fn ocrmypdf_executable_names() -> Vec<&'static str> {
+    vec!["ocrmypdf"]
+}
+
+#[cfg(windows)]
+fn default_ocrmypdf_command() -> &'static str {
+    "ocrmypdf"
+}
+
+#[cfg(not(windows))]
+fn default_ocrmypdf_command() -> &'static str {
+    "ocrmypdf"
+}
+
+fn ocr_external_env(command_path: Option<&Path>) -> Vec<(String, String)> {
+    let mut vars = Vec::new();
+
+    if let Ok(tesseract) = tesseract_command_spec() {
+        for (name, value) in tesseract.env {
+            vars.push((name, value));
+        }
+    }
+
+    if let Some(path_value) = ocr_path_env(command_path) {
+        vars.push(("PATH".into(), path_value));
+    }
+
+    vars
+}
+
+fn ocr_path_env(command_path: Option<&Path>) -> Option<String> {
+    let mut entries = Vec::new();
+
+    if let Some(path) = command_path {
+        push_parent_dir(&mut entries, path);
+    }
+
+    if let Ok(tesseract) = tesseract_command_spec() {
+        push_command_parent_dir(&mut entries, &tesseract.executable);
+    }
+
+    if let Ok(ghostscript) = ghostscript_command() {
+        push_command_parent_dir(&mut entries, &ghostscript);
+    }
+
+    if let Some(qpdf) = qpdf_command_path() {
+        push_parent_dir(&mut entries, &qpdf);
+    }
+
+    if let Some(existing_path) = env::var_os("PATH") {
+        for path in env::split_paths(&existing_path) {
+            push_unique_path(&mut entries, path);
+        }
+    }
+
+    if entries.is_empty() {
+        return None;
+    }
+
+    env::join_paths(entries)
+        .ok()
+        .map(|value| value.to_string_lossy().to_string())
+}
+
+fn qpdf_command_path() -> Option<PathBuf> {
+    for env_name in ["NOMETER_QPDF_EXE", "OPENFORGE_QPDF_EXE"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                continue;
+            }
+
+            let path = PathBuf::from(trimmed);
+            if path.exists() {
+                return Some(path);
+            }
+        }
+    }
+
+    for root in qpdf_roots() {
+        if let Some(path) = find_first_named_file(&root, &qpdf_executable_names(), 0) {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+fn qpdf_roots() -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    for env_name in ["NOMETER_QPDF_ROOT", "OPENFORGE_QPDF_ROOT"] {
+        if let Ok(value) = std::env::var(env_name) {
+            let trimmed = value.trim();
+            if !trimmed.is_empty() {
+                roots.push(PathBuf::from(trimmed));
+            }
+        }
+    }
+
+    roots.push(
+        PathBuf::from(r"D:\Codex\OpenForge")
+            .join("tools")
+            .join("qpdf"),
+    );
+    roots
+}
+
+#[cfg(windows)]
+fn qpdf_executable_names() -> Vec<&'static str> {
+    vec!["qpdf.exe", "qpdf"]
+}
+
+#[cfg(not(windows))]
+fn qpdf_executable_names() -> Vec<&'static str> {
+    vec!["qpdf"]
+}
+
+fn push_command_parent_dir(entries: &mut Vec<PathBuf>, command: &str) {
+    let path = PathBuf::from(command);
+    if path.is_absolute() {
+        push_parent_dir(entries, &path);
+    }
+}
+
+fn push_parent_dir(entries: &mut Vec<PathBuf>, path: &Path) {
+    if let Some(parent) = path.parent() {
+        push_unique_path(entries, parent.to_path_buf());
+    }
+}
+
+fn push_unique_path(entries: &mut Vec<PathBuf>, path: PathBuf) {
+    if !path.as_os_str().is_empty() && !entries.iter().any(|entry| entry == &path) {
+        entries.push(path);
+    }
+}
+
 fn tesseract_roots() -> Vec<PathBuf> {
     let mut roots = Vec::new();
 
@@ -1514,6 +1805,7 @@ fn main() {
             rasterize_pdf_with_ghostscript,
             compress_files_with_rat_trap,
             ocr_image_to_text,
+            ocr_searchable_pdf,
             inspect_rat_trap_archive,
             extract_rat_trap_archive,
             export_rat_trap_archive_to_zip

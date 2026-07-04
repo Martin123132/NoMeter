@@ -47,6 +47,7 @@ import {
   inspectRatTrapArchive,
   nativeEngineCatalog,
   ocrImageToTextFile,
+  ocrPdfToSearchableFile,
   optimizePdfFile,
   pickNativeFolder,
   rasterizePdfFile,
@@ -73,6 +74,7 @@ type ToolId =
   | 'pdf-compress'
   | 'pdf-rasterize'
   | 'ocr-image-text'
+  | 'ocr-searchable-pdf'
   | 'document-convert'
   | 'native-engine'
 type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
@@ -237,6 +239,12 @@ const toolOptions: ToolOption[] = [
     icon: Captions,
   },
   {
+    id: 'ocr-searchable-pdf',
+    label: 'OCR searchable PDF',
+    detail: 'OCRmyPDF',
+    icon: FileText,
+  },
+  {
     id: 'document-convert',
     label: 'Documents',
     detail: 'MD, HTML, DOCX, EPUB',
@@ -312,6 +320,11 @@ const quickStartHints: Record<ToolId, { source: string; output: string; focus: s
     source: 'Scanned image files',
     output: 'Plain text OCR',
     focus: 'Use the local Tesseract path in desktop mode.',
+  },
+  'ocr-searchable-pdf': {
+    source: 'Scanned PDF files',
+    output: 'Searchable PDF',
+    focus: 'Use the local OCRmyPDF path in desktop mode.',
   },
   'document-convert': {
     source: 'Markdown, HTML, DOCX, ODT, RTF, or text',
@@ -449,6 +462,7 @@ function App() {
       activeTool === 'pdf-compress' ||
       activeTool === 'pdf-rasterize' ||
       activeTool === 'ocr-image-text' ||
+      activeTool === 'ocr-searchable-pdf' ||
       isRatTrapTool(activeTool)) &&
     !nativeStatus.available
   const missionFolderWarning = requiresDesktopTool(activeTool) ? nativeFolderIssue : null
@@ -1389,6 +1403,14 @@ function App() {
       return
     }
 
+    if (activeTool === 'ocr-searchable-pdf' && !nativeStatus.available) {
+      setBanner({
+        tone: 'warning',
+        text: 'Searchable PDF OCR needs the NoMeter desktop app and a local OCRmyPDF install.',
+      })
+      return
+    }
+
     if (isRatTrapTool(activeTool) && !nativeStatus.available) {
       setBanner({
         tone: 'warning',
@@ -1433,6 +1455,8 @@ function App() {
                           ? 'Add one or more PDF files before running Ghostscript rasterization.'
                           : activeTool === 'ocr-image-text'
                             ? 'Add one or more image files before running Tesseract OCR.'
+                            : activeTool === 'ocr-searchable-pdf'
+                              ? 'Add one or more scanned PDFs before running OCRmyPDF.'
                             : 'Add one or more PDF files before running this PDF job.',
       })
       return
@@ -1488,6 +1512,10 @@ function App() {
 
       if (activeTool === 'ocr-image-text') {
         await runOcrImageText(runnableJobs)
+      }
+
+      if (activeTool === 'ocr-searchable-pdf') {
+        await runOcrSearchablePdf(runnableJobs)
       }
 
       if (activeTool === 'native-engine') {
@@ -1970,6 +1998,45 @@ function App() {
         completed > 0
           ? `${completed} image${completed === 1 ? '' : 's'} read with Tesseract OCR.`
           : 'No OCR text exports were created. Install Tesseract or set NOMETER_TESSERACT_ROOT.',
+    })
+  }
+
+  const runOcrSearchablePdf = async (compatibleJobs: QueueJob[]) => {
+    let completed = 0
+
+    for (const job of compatibleJobs) {
+      updateJob(job.id, {
+        status: 'running',
+        progress: 30,
+        message: 'Building searchable PDF with OCRmyPDF',
+      })
+
+      try {
+        const result = await ocrPdfToSearchableFile(job.file, nativeFolders)
+        const artifact = createArtifact(result.blob, result.name, 'OCRmyPDF searchable PDF', 1, result.savedPath)
+        setExports((current) => [artifact, ...current])
+        updateJob(job.id, {
+          status: 'done',
+          progress: 100,
+          message: nativeOutputMessage(result, 'searchable PDF ready'),
+          outputName: result.name,
+        })
+        completed += 1
+      } catch (error) {
+        updateJob(job.id, {
+          status: 'error',
+          progress: 0,
+          message: error instanceof Error ? error.message : 'OCRmyPDF searchable PDF failed.',
+        })
+      }
+    }
+
+    setBanner({
+      tone: completed > 0 ? 'success' : 'danger',
+      text:
+        completed > 0
+          ? `${completed} PDF${completed === 1 ? '' : 's'} made searchable with OCRmyPDF.`
+          : 'No searchable PDFs were created. Install OCRmyPDF or set NOMETER_OCRMYPDF_ROOT.',
     })
   }
 
@@ -3094,6 +3161,11 @@ function App() {
                   <Captions size={18} />
                   <span>Text file</span>
                 </div>
+              ) : activeTool === 'ocr-searchable-pdf' ? (
+                <div className="pdf-output">
+                  <FileText size={18} />
+                  <span>Searchable PDF</span>
+                </div>
               ) : activeTool === 'archive-zip' ? (
                 <div className="pdf-output">
                   <Archive size={18} />
@@ -3461,6 +3533,7 @@ function isCompatibleForTool(job: QueueJob, tool: ToolId) {
   if (tool === 'pdf-compress') return job.kind === 'pdf'
   if (tool === 'pdf-rasterize') return job.kind === 'pdf'
   if (tool === 'ocr-image-text') return job.kind === 'image'
+  if (tool === 'ocr-searchable-pdf') return job.kind === 'pdf'
   if (tool === 'image-convert') return job.kind === 'image'
   if (tool === 'pdf-merge' || tool === 'pdf-split') return job.kind === 'pdf'
   return false
@@ -3540,6 +3613,7 @@ function requiresDesktopTool(tool: ToolId) {
     tool === 'pdf-compress' ||
     tool === 'pdf-rasterize' ||
     tool === 'ocr-image-text' ||
+    tool === 'ocr-searchable-pdf' ||
     isRatTrapTool(tool)
   )
 }

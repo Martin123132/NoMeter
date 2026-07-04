@@ -177,6 +177,17 @@ checkText(appText, appPath, 'Tesseract OCR image text route', [
   'Install Tesseract or set NOMETER_TESSERACT_ROOT',
 ])
 
+checkText(appText, appPath, 'OCRmyPDF searchable PDF route', [
+  "'ocr-searchable-pdf'",
+  "label: 'OCR searchable PDF'",
+  'OCRmyPDF',
+  'Searchable PDF',
+  'ocrPdfToSearchableFile(job.file, nativeFolders)',
+  'OCRmyPDF searchable PDF',
+  'Searchable PDF OCR needs the NoMeter desktop app and a local OCRmyPDF install.',
+  'Install OCRmyPDF or set NOMETER_OCRMYPDF_ROOT',
+])
+
 checkText(cssText, cssPath, 'responsive guided flow layout', [
   '.mission-route-radar',
   '.route-status',

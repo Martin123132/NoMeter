@@ -26,7 +26,7 @@
 - [x] Add Ghostscript PDF rasterization adapter.
 - [x] Add OCR install preflight/checklist.
 - [x] Add Tesseract image-to-text OCR adapter.
-- [ ] Add OCRmyPDF searchable-PDF OCR adapter.
+- [x] Add OCRmyPDF searchable-PDF OCR adapter.
 - [x] Add D:-scoped working directory defaults for this workspace.
 - [x] Add user-configurable work/save directory setting.
 
