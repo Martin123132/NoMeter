@@ -51,3 +51,13 @@ Use a data-drive folder where possible. The app blocks system-drive native folde
 Browser workflows create downloadable rows in the Exports panel.
 
 Desktop-native workflows also copy results into the configured Save folder and show the saved path in the Exports panel.
+
+The History section keeps output names, actions, sizes, dates, and saved desktop paths in the local app profile. It does not store source files or their contents. Use the retry icon beside a failed queue item to run it again during the same session.
+
+## Keep Work Files Tidy
+
+NoMeter automatically checks the configured Work folder and removes generated `job-*` directories after 24 hours. Use `Clean now` in Native pack to remove generated job folders immediately. Cleanup requires NoMeter's ownership marker, is restricted to the configured non-system Work folder, and never touches the Save folder.
+
+## OCR Language
+
+When Tesseract is available, NoMeter lists the language data installed on the machine. Image OCR and searchable-PDF OCR use the selected language. Searchable PDFs can keep pages that already contain text or redo an existing OCR layer.

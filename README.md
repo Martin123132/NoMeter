@@ -46,6 +46,9 @@ See [`docs/first-run.md`](docs/first-run.md) for the short user guide and [`docs
   - OCRmyPDF: searchable scanned PDF OCR when installed/configured.
   - Rat-Trap: optional local GMW archive packing, metadata inspection, extraction, and ZIP export when installed/configured.
 - Configure native work and save directories (with defaults that can be set to avoid system-drive usage).
+- Keep local conversion history metadata, reopen saved desktop outputs, and retry failed in-session jobs.
+- Discover installed Tesseract languages and choose whether searchable-PDF OCR keeps or replaces existing text layers.
+- Remove generated `job-*` work folders automatically after 24 hours, with a guarded manual cleanup action.
 
 ## Quick start
 
@@ -112,6 +115,11 @@ See [`docs/installer-packaging.md`](docs/installer-packaging.md) before includin
 - Save folder: configurable in Settings.
 
 If you run on a machine with custom drives or folders, set your own values in the UI before queued native jobs.
+NoMeter blocks C-drive native folders. Automatic cleanup only removes generated `job-*` directories carrying NoMeter's ownership marker inside the configured Work folder; it never removes the Save folder or arbitrary files.
+
+### History and retry
+
+The History view stores output metadata in the local app profile. It does not retain source files or file contents. Desktop outputs with a saved path can be reopened later; browser-only downloads remain openable only during the session that created them. Failed queue entries can be reset with the retry icon while their source `File` is still available in the current session.
 
 ## Public proof / screenshots
 
@@ -155,7 +163,7 @@ See the full checklist: [`docs/release-readiness.md`](docs/release-readiness.md)
 - Browser core is stable (images/ZIP/PDF merge/split).
 - Native engine adapters (FFmpeg, Pandoc, qpdf) are wired and queue-integrated.
 - Ghostscript PDF compression/rasterization, Tesseract image OCR, OCRmyPDF searchable PDF, and Rat-Trap GMW archive workflows are available as local desktop engines.
-- Remaining roadmap focuses on richer document formats, cleanup, and history.
+- Remaining roadmap focuses on real native progress/cancellation, deeper automated desktop coverage, and cross-platform builds.
 
 Full roadmap details live in [`ROADMAP.md`](ROADMAP.md).
 
@@ -165,6 +173,7 @@ Run these before PRs:
 
 ```powershell
 npm run lint
+npm test
 npm run license:positioning-check
 npm run qa:guided-flow-check
 npm run build
@@ -173,14 +182,15 @@ npm run native:ocr-preflight
 ```
 
 `native:doctor` verifies local prerequisites and emits useful warnings for optional engines not yet bundled.
-`native:ocr-preflight` keeps the planned Tesseract/OCRmyPDF path visible without requiring OCR tools in CI; run it with `-- --strict` after installing local OCR binaries.
+`native:ocr-preflight` verifies the optional local Tesseract/OCRmyPDF toolchain without requiring those tools in CI; run it with `-- --strict` on an OCR-enabled desktop machine.
 `license:positioning-check` keeps public wording aligned with the non-commercial public licence and commercial-use boundary.
 `qa:guided-flow-check` keeps the guided conversion path, mixed-file recipe switching, mobile queue cards, and native folder guardrails from drifting.
+`desktop:ui-smoke -- --port <port>` verifies a running debug-enabled desktop build's OCR controls, D-safe folders, sample conversion, and persistent History view without publishing anything.
 
 ### Related scripts
 
 - `npm run native:sync-sidecars`: sync local native sidecars.
-- `npm run native:ocr-preflight`: check planned local OCR prerequisites and D-drive posture.
+- `npm run native:ocr-preflight`: check local OCR prerequisites and D-drive posture.
 - `npm run native:relocate-tauri-cache`: copy bundler cache back to configured toolchain-safe path.
 
 ## License

@@ -28,6 +28,22 @@ export type PdfRasterOptions = {
   dpi: number
 }
 
+export type OcrPdfMode = 'skip' | 'redo'
+
+export type OcrOptions = {
+  language: string
+}
+
+export type OcrPdfOptions = OcrOptions & {
+  mode: OcrPdfMode
+}
+
+export type NativeCleanupResult = {
+  removedDirectories: number
+  reclaimedBytes: number
+  workDir: string
+}
+
 export type NativeTranscodeResult = {
   name: string
   blob: Blob
@@ -138,6 +154,40 @@ export async function pickNativeFolder(defaultPath?: string): Promise<string | n
   })
 
   return typeof selected === 'string' ? selected : null
+}
+
+export async function openNativePath(path: string) {
+  if (!isTauriRuntime()) {
+    throw new Error('Opening a saved path requires the NoMeter desktop app.')
+  }
+
+  const { open } = await import('@tauri-apps/plugin-shell')
+  await open(path)
+}
+
+export async function listOcrLanguages(): Promise<string[]> {
+  if (!isTauriRuntime()) return ['eng']
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  const languages = await invoke<string[]>('list_ocr_languages')
+  return languages.length > 0 ? languages : ['eng']
+}
+
+export async function cleanupNativeWorkDir(
+  folders: NativeFolders,
+  maxAgeHours = 24,
+): Promise<NativeCleanupResult> {
+  if (!isTauriRuntime()) {
+    throw new Error('Native work cleanup requires the NoMeter desktop app.')
+  }
+
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke<NativeCleanupResult>('cleanup_native_work_dir', {
+    request: {
+      folders: normalizeNativeFolders(folders),
+      maxAgeHours,
+    },
+  })
 }
 
 export function getNativeCommandPreview(engine: NativeEngine) {
@@ -299,7 +349,11 @@ export async function rasterizePdfFile(
   }
 }
 
-export async function ocrImageToTextFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+export async function ocrImageToTextFile(
+  file: File,
+  options: OcrOptions,
+  folders?: NativeFolders,
+): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
     throw new Error('Tesseract OCR requires the NoMeter desktop app.')
   }
@@ -315,6 +369,7 @@ export async function ocrImageToTextFile(file: File, folders?: NativeFolders): P
     request: {
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
+      language: options.language,
       folders: normalizeNativeFolders(folders),
     },
   })
@@ -327,7 +382,11 @@ export async function ocrImageToTextFile(file: File, folders?: NativeFolders): P
   }
 }
 
-export async function ocrPdfToSearchableFile(file: File, folders?: NativeFolders): Promise<NativeTranscodeResult> {
+export async function ocrPdfToSearchableFile(
+  file: File,
+  options: OcrPdfOptions,
+  folders?: NativeFolders,
+): Promise<NativeTranscodeResult> {
   if (!isTauriRuntime()) {
     throw new Error('OCRmyPDF requires the NoMeter desktop app.')
   }
@@ -343,6 +402,8 @@ export async function ocrPdfToSearchableFile(file: File, folders?: NativeFolders
     request: {
       fileName: file.name,
       bytesBase64: await fileToBase64(file),
+      language: options.language,
+      mode: options.mode,
       folders: normalizeNativeFolders(folders),
     },
   })

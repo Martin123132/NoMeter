@@ -37,6 +37,7 @@ import {
   type ImageFormat,
 } from './lib/converters'
 import {
+  cleanupNativeWorkDir,
   compressPdfFile,
   compressFilesWithRatTrap,
   convertDocumentFile,
@@ -45,9 +46,11 @@ import {
   getNativeCommandPreview,
   getNativeRuntimeStatus,
   inspectRatTrapArchive,
+  listOcrLanguages,
   nativeEngineCatalog,
   ocrImageToTextFile,
   ocrPdfToSearchableFile,
+  openNativePath,
   optimizePdfFile,
   pickNativeFolder,
   rasterizePdfFile,
@@ -56,46 +59,30 @@ import {
   type NativeFolders,
   type NativeRuntimeStatus,
   type NativeTranscodeResult,
+  type OcrPdfMode,
   type PdfRasterFormat,
 } from './lib/nativeEngines'
+import {
+  appendConversionHistory,
+  conversionHistoryStorageKey,
+  historyEntryFromArtifact,
+  parseConversionHistory,
+  resetJobForRetry,
+  type ConversionHistoryEntry,
+  type ExportArtifact,
+  type FileKind,
+  type JobStatus,
+  type QueueJob,
+  type ToolId,
+} from './lib/jobs'
+import { validateNativeFolders } from './lib/nativeFolders'
 import './App.css'
 
 type NavId = 'convert' | 'pdf' | 'documents' | 'images' | 'archive' | 'media' | 'ocr' | 'recipes' | 'history'
-type ToolId =
-  | 'image-convert'
-  | 'archive-zip'
-  | 'rat-trap-archive'
-  | 'rat-trap-inspect'
-  | 'rat-trap-extract'
-  | 'rat-trap-export-zip'
-  | 'pdf-merge'
-  | 'pdf-split'
-  | 'pdf-optimize'
-  | 'pdf-compress'
-  | 'pdf-rasterize'
-  | 'ocr-image-text'
-  | 'ocr-searchable-pdf'
-  | 'document-convert'
-  | 'native-engine'
-type FileKind = 'image' | 'pdf' | 'media' | 'document' | 'archive' | 'unknown'
-type JobStatus = 'ready' | 'running' | 'done' | 'blocked' | 'error'
 type BannerTone = 'success' | 'warning' | 'danger'
 type GuidanceMode = 'guided' | 'explorer'
 type AtlasTone = 'focus' | 'active' | 'idle' | 'warning' | 'done'
 type MissionRailState = 'active' | 'done' | 'warning' | 'locked'
-
-type QueueJob = {
-  id: string
-  file: File
-  name: string
-  size: number
-  type: string
-  kind: FileKind
-  status: JobStatus
-  progress: number
-  message: string
-  outputName?: string
-}
 
 type AtlasNode = {
   id: string
@@ -126,17 +113,6 @@ type MissionWaypoint = {
   ctaAction: () => void
   tone: 'success' | 'info' | 'warning'
   disabled?: boolean
-}
-
-type ExportArtifact = {
-  id: string
-  name: string
-  url: string
-  size: number
-  action: string
-  sourceCount: number
-  createdAt: string
-  savedPath?: string
 }
 
 type NavItem = {
@@ -351,6 +327,7 @@ const defaultNativeFolders: NativeFolders = {
 }
 
 const nativeFolderStorageKey = 'nometer.nativeFolders.v1'
+const ocrLanguageStorageKey = 'nometer.ocrLanguage.v1'
 const quickStartStorageKey = 'nometer.quickStart.v1'
 const guidanceModeStorageKey = 'nometer.guidanceMode.v1'
 const firstRunGuideStorageKey = 'nometer.firstRunGuide.v1'
@@ -369,11 +346,17 @@ function App() {
   const [activeTool, setActiveTool] = useState<ToolId>('image-convert')
   const [jobs, setJobs] = useState<QueueJob[]>([])
   const [exports, setExports] = useState<ExportArtifact[]>([])
+  const [historyEntries, setHistoryEntries] = useState<ConversionHistoryEntry[]>(loadConversionHistory)
   const [imageFormat, setImageFormat] = useState<ImageFormat>('webp')
   const [documentFormat, setDocumentFormat] = useState<DocumentOutputFormat>('html')
   const [nativeFolders, setNativeFolders] = useState<NativeFolders>(loadNativeFolders)
   const [pdfRasterFormat, setPdfRasterFormat] = useState<PdfRasterFormat>('png')
   const [pdfRasterDpi, setPdfRasterDpi] = useState(144)
+  const [ocrLanguage, setOcrLanguage] = useState(loadOcrLanguage)
+  const [ocrLanguages, setOcrLanguages] = useState<string[]>(['eng'])
+  const [ocrPdfMode, setOcrPdfMode] = useState<OcrPdfMode>('skip')
+  const [ocrLanguageStatus, setOcrLanguageStatus] = useState('English is the default local OCR language.')
+  const [cleanupStatus, setCleanupStatus] = useState('Stale job folders are cleaned automatically after 24 hours.')
   const [quality, setQuality] = useState(82)
   const [preserveNames, setPreserveNames] = useState(true)
   const [isDragging, setIsDragging] = useState(false)
@@ -385,6 +368,7 @@ function App() {
   const exportsSectionRef = useRef<HTMLDivElement>(null)
   const missionRailSectionRef = useRef<HTMLDivElement>(null)
   const guidanceModeTransitionRef = useRef<GuidanceMode>('guided')
+  const cleanupRootsRef = useRef(new Set<string>())
   const runJobsRef = useRef<() => Promise<void>>(() => Promise.resolve())
   const [showQuickStart, setShowQuickStart] = useState(() => {
     try {
@@ -1207,6 +1191,72 @@ function App() {
 
   useEffect(() => {
     try {
+      localStorage.setItem(conversionHistoryStorageKey, JSON.stringify(historyEntries))
+    } catch {
+      // History metadata is optional and remains local to this app profile.
+    }
+  }, [historyEntries])
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(ocrLanguageStorageKey, ocrLanguage)
+    } catch {
+      // OCR language preference is optional local state.
+    }
+  }, [ocrLanguage])
+
+  useEffect(() => {
+    if (!nativeStatus.available) return
+
+    let active = true
+    listOcrLanguages()
+      .then((languages) => {
+        if (!active) return
+        setOcrLanguages(languages)
+        setOcrLanguage((current) => (languages.includes(current) ? current : languages[0]))
+        setOcrLanguageStatus(
+          `${languages.length} installed OCR language${languages.length === 1 ? '' : 's'} detected locally.`,
+        )
+      })
+      .catch((error) => {
+        if (!active) return
+        setOcrLanguageStatus(error instanceof Error ? error.message : 'Could not inspect local OCR languages.')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [nativeStatus.available])
+
+  useEffect(() => {
+    if (!nativeStatus.available || nativeFolderIssue) return
+
+    const workDirKey = nativeFolders.workDir.trim().toLowerCase()
+    if (cleanupRootsRef.current.has(workDirKey)) return
+    cleanupRootsRef.current.add(workDirKey)
+
+    let active = true
+    cleanupNativeWorkDir(nativeFolders, 24)
+      .then((result) => {
+        if (!active) return
+        setCleanupStatus(
+          result.removedDirectories > 0
+            ? `Cleaned ${result.removedDirectories} stale job folder${result.removedDirectories === 1 ? '' : 's'} (${formatBytes(result.reclaimedBytes)}).`
+            : 'Work folder checked. No stale job folders found.',
+        )
+      })
+      .catch((error) => {
+        if (!active) return
+        setCleanupStatus(error instanceof Error ? error.message : 'Automatic work-folder cleanup could not run.')
+      })
+
+    return () => {
+      active = false
+    }
+  }, [nativeFolderIssue, nativeFolders, nativeStatus.available])
+
+  useEffect(() => {
+    try {
       localStorage.setItem(guidanceModeStorageKey, guidanceMode)
     } catch {
       // Optional local storage only.
@@ -1354,9 +1404,73 @@ function App() {
     setJobs((current) => current.filter((job) => job.id !== id))
   }
 
+  const retryJob = (id: string) => {
+    setJobs((current) => current.map((job) => (job.id === id ? resetJobForRetry(job) : job)))
+    setBanner({ tone: 'success', text: 'Failed job reset. Review the recipe, then run it again.' })
+  }
+
   const clearExports = () => {
     exports.forEach((artifact) => URL.revokeObjectURL(artifact.url))
     setExports([])
+  }
+
+  const addExport = (artifact: ExportArtifact) => {
+    setExports((current) => [artifact, ...current])
+    setHistoryEntries((current) =>
+      appendConversionHistory(current, historyEntryFromArtifact(artifact, activeTool)),
+    )
+  }
+
+  const removeHistoryEntry = (id: string) => {
+    setHistoryEntries((current) => current.filter((entry) => entry.id !== id))
+  }
+
+  const clearHistory = () => {
+    setHistoryEntries([])
+    setBanner({ tone: 'success', text: 'Local conversion history cleared.' })
+  }
+
+  const openHistoryEntry = async (entry: ConversionHistoryEntry) => {
+    const sessionArtifact = exports.find((artifact) => artifact.id === entry.id)
+    if (sessionArtifact) {
+      window.open(sessionArtifact.url, '_blank', 'noopener,noreferrer')
+      return
+    }
+
+    if (entry.savedPath && nativeStatus.available) {
+      try {
+        await openNativePath(entry.savedPath)
+      } catch (error) {
+        setBanner({
+          tone: 'danger',
+          text: error instanceof Error ? error.message : 'Could not open the saved output.',
+        })
+      }
+      return
+    }
+
+    setBanner({
+      tone: 'warning',
+      text: entry.savedPath
+        ? 'Open this saved path from the NoMeter desktop app.'
+        : 'Browser downloads can only be reopened during the session that created them.',
+    })
+  }
+
+  const cleanNativeWorkNow = async () => {
+    if (!nativeStatus.available || nativeFolderIssue || isRunning) return
+
+    setCleanupStatus('Cleaning generated job folders...')
+    try {
+      const result = await cleanupNativeWorkDir(nativeFolders, 0)
+      setCleanupStatus(
+        result.removedDirectories > 0
+          ? `Cleaned ${result.removedDirectories} job folder${result.removedDirectories === 1 ? '' : 's'} (${formatBytes(result.reclaimedBytes)}).`
+          : 'Work folder is already tidy.',
+      )
+    } catch (error) {
+      setCleanupStatus(error instanceof Error ? error.message : 'Could not clean the native work folder.')
+    }
   }
 
   async function runJobs() {
@@ -1548,7 +1662,7 @@ function App() {
           ? imageOutputName(job.name, imageFormat)
           : imageOutputName(`nometer-image-${completed + 1}`, imageFormat)
         const artifact = createArtifact(blob, name, 'Image batch', 1)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -1588,7 +1702,7 @@ function App() {
       const blob = await zipFiles(files, preserveNames)
       const name = archiveOutputName(files, preserveNames)
       const artifact = createArtifact(blob, name, 'ZIP archive', compatibleJobs.length)
-      setExports((current) => [artifact, ...current])
+      addExport(artifact)
       compatibleJobs.forEach((job) =>
         updateJob(job.id, {
           status: 'done',
@@ -1632,7 +1746,7 @@ function App() {
         compatibleJobs.length,
         result.savedPath,
       )
-      setExports((current) => [artifact, ...current])
+      addExport(artifact)
       compatibleJobs.forEach((job) =>
         updateJob(job.id, {
           status: 'done',
@@ -1689,7 +1803,7 @@ function App() {
           1,
           result.savedPath,
         )
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -1736,7 +1850,7 @@ function App() {
     try {
       const blob = await mergePdfFiles(compatibleJobs.map((job) => job.file))
       const artifact = createArtifact(blob, 'nometer-merged.pdf', 'PDF merge', compatibleJobs.length)
-      setExports((current) => [artifact, ...current])
+      addExport(artifact)
       compatibleJobs.forEach((job) =>
         updateJob(job.id, {
           status: 'done',
@@ -1777,7 +1891,7 @@ function App() {
           ? `${fileStem(compatibleJobs[0].name)}-pages.zip`
           : 'nometer-split-pages.zip'
       const artifact = createArtifact(blob, name, 'PDF split', compatibleJobs.length)
-      setExports((current) => [artifact, ...current])
+      addExport(artifact)
       compatibleJobs.forEach((job) =>
         updateJob(job.id, {
           status: 'done',
@@ -1815,7 +1929,7 @@ function App() {
       try {
         const result = await optimizePdfFile(job.file, nativeFolders)
         const artifact = createArtifact(result.blob, result.name, 'qpdf optimize', 1, result.savedPath)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -1854,7 +1968,7 @@ function App() {
       try {
         const result = await compressPdfFile(job.file, nativeFolders)
         const artifact = createArtifact(result.blob, result.name, 'Ghostscript compression', 1, result.savedPath)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -1897,7 +2011,7 @@ function App() {
           nativeFolders,
         )
         const artifact = createArtifact(result.blob, result.name, 'Ghostscript rasterization', 1, result.savedPath)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -1936,7 +2050,7 @@ function App() {
       try {
         const result = await transcodeMediaFile(job.file, nativeFolders)
         const artifact = createArtifact(result.blob, result.name, 'FFmpeg transcode', 1, result.savedPath)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -1973,9 +2087,9 @@ function App() {
       })
 
       try {
-        const result = await ocrImageToTextFile(job.file, nativeFolders)
+        const result = await ocrImageToTextFile(job.file, { language: ocrLanguage }, nativeFolders)
         const artifact = createArtifact(result.blob, result.name, 'Tesseract OCR text', 1, result.savedPath)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -2012,9 +2126,13 @@ function App() {
       })
 
       try {
-        const result = await ocrPdfToSearchableFile(job.file, nativeFolders)
+        const result = await ocrPdfToSearchableFile(
+          job.file,
+          { language: ocrLanguage, mode: ocrPdfMode },
+          nativeFolders,
+        )
         const artifact = createArtifact(result.blob, result.name, 'OCRmyPDF searchable PDF', 1, result.savedPath)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -2053,7 +2171,7 @@ function App() {
       try {
         const result = await convertDocumentFile(job.file, documentFormat, nativeFolders)
         const artifact = createArtifact(result.blob, result.name, 'Pandoc conversion', 1, result.savedPath)
-        setExports((current) => [artifact, ...current])
+        addExport(artifact)
         updateJob(job.id, {
           status: 'done',
           progress: 100,
@@ -2182,7 +2300,11 @@ function App() {
         <header className="topbar">
           <div>
             <h1>{navItems.find((item) => item.id === activeNav)?.label ?? 'Convert'}</h1>
-            <p>{toolOptions.find((tool) => tool.id === activeTool)?.detail}</p>
+            <p>
+              {activeNav === 'history'
+                ? `${historyEntries.length} completed conversion${historyEntries.length === 1 ? '' : 's'} stored locally`
+                : toolOptions.find((tool) => tool.id === activeTool)?.detail}
+            </p>
           </div>
           <div className="topbar-actions">
             <div className={`path-strip path-strip-${missionWaypoint.tone}`} title={missionWaypoint.hint}>
@@ -2429,6 +2551,18 @@ function App() {
         ) : null}
 
         {banner ? <div className={`banner ${banner.tone}`}>{banner.text}</div> : null}
+
+        {activeNav === 'history' ? (
+          <HistoryPanel
+            entries={historyEntries}
+            sessionExports={exports}
+            nativeAvailable={nativeStatus.available}
+            onClear={clearHistory}
+            onOpen={openHistoryEntry}
+            onRemove={removeHistoryEntry}
+          />
+        ) : (
+          <>
 
         {shouldShowFirstRunGuide ? (
           <section className="first-run-guide" aria-label="NoMeter first run guidance">
@@ -2973,7 +3107,9 @@ function App() {
                         </td>
                       </tr>
                     ) : (
-                      jobs.map((job) => <QueueRow key={job.id} job={job} onRemove={removeJob} />)
+                      jobs.map((job) => (
+                        <QueueRow key={job.id} job={job} onRemove={removeJob} onRetry={retryJob} />
+                      ))
                     )}
                   </tbody>
                 </table>
@@ -3178,6 +3314,46 @@ function App() {
                 </div>
               )}
 
+              {activeTool === 'ocr-image-text' || activeTool === 'ocr-searchable-pdf' ? (
+                <div className="ocr-settings">
+                  <label className="select-control" htmlFor="ocr-language">
+                    <span>OCR language</span>
+                    <select
+                      id="ocr-language"
+                      value={ocrLanguage}
+                      onChange={(event) => setOcrLanguage(event.target.value)}
+                    >
+                      {ocrLanguages.map((language) => (
+                        <option key={language} value={language}>
+                          {ocrLanguageLabel(language)}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <span className="option-note">{ocrLanguageStatus}</span>
+                  {activeTool === 'ocr-searchable-pdf' ? (
+                    <div className="segmented-control two-up" aria-label="Searchable PDF OCR mode">
+                      <button
+                        type="button"
+                        className={ocrPdfMode === 'skip' ? 'active' : ''}
+                        onClick={() => setOcrPdfMode('skip')}
+                        title="Keep pages that already contain text"
+                      >
+                        Keep text
+                      </button>
+                      <button
+                        type="button"
+                        className={ocrPdfMode === 'redo' ? 'active' : ''}
+                        onClick={() => setOcrPdfMode('redo')}
+                        title="Replace an existing OCR text layer"
+                      >
+                        Redo OCR
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              ) : null}
+
               <label className="toggle-row">
                 <input
                   type="checkbox"
@@ -3266,6 +3442,16 @@ function App() {
                     <RotateCcw size={16} />
                     Defaults
                   </button>
+                  <button
+                    type="button"
+                    className="ghost-button"
+                    onClick={cleanNativeWorkNow}
+                    disabled={!nativeStatus.available || Boolean(nativeFolderIssue) || isRunning}
+                    title="Remove generated job folders from the configured Work folder"
+                  >
+                    <Trash2 size={16} />
+                    Clean now
+                  </button>
                   <span className={nativeFolderIssue ? 'folder-warning' : 'folder-note'}>
                     {nativeFolderIssue ??
                       (nativeStatus.available
@@ -3273,6 +3459,7 @@ function App() {
                         : 'Stored for desktop runs; folder choices are kept local.')}
                   </span>
                 </div>
+                <span className="folder-note cleanup-note">{cleanupStatus}</span>
               </div>
               <div className="engine-list">
                 {nativeEngineCatalog.map((engine) => (
@@ -3294,8 +3481,94 @@ function App() {
             </section>
           </aside>
         </div>
+          </>
+        )}
       </main>
     </div>
+  )
+}
+
+function HistoryPanel({
+  entries,
+  sessionExports,
+  nativeAvailable,
+  onClear,
+  onOpen,
+  onRemove,
+}: {
+  entries: ConversionHistoryEntry[]
+  sessionExports: ExportArtifact[]
+  nativeAvailable: boolean
+  onClear: () => void
+  onOpen: (entry: ConversionHistoryEntry) => void
+  onRemove: (id: string) => void
+}) {
+  const sessionIds = new Set(sessionExports.map((artifact) => artifact.id))
+
+  return (
+    <section className="history-panel" aria-label="Local conversion history">
+      <div className="section-header">
+        <div>
+          <h2>Local conversion history</h2>
+          <p>Output metadata stays in this app profile. Source files and file contents are never stored here.</p>
+        </div>
+        <button type="button" className="ghost-button" onClick={onClear} disabled={entries.length === 0}>
+          <Trash2 size={16} />
+          Clear history
+        </button>
+      </div>
+
+      {entries.length === 0 ? (
+        <div className="history-empty">
+          <History size={20} />
+          <strong>No completed conversions yet</strong>
+          <span>Finished outputs will appear here automatically.</span>
+        </div>
+      ) : (
+        <div className="history-list">
+          {entries.map((entry) => {
+            const canOpen = sessionIds.has(entry.id) || Boolean(entry.savedPath && nativeAvailable)
+            return (
+              <article className="history-row" key={entry.id}>
+                <span className="history-icon" aria-hidden="true">
+                  <CheckCircle2 size={17} />
+                </span>
+                <div className="history-copy">
+                  <strong>{entry.name}</strong>
+                  <span>
+                    {entry.action} - {entry.sourceCount} source{entry.sourceCount === 1 ? '' : 's'} - {formatBytes(entry.size)}
+                  </span>
+                  <small>{formatHistoryDate(entry.createdAt)}</small>
+                  {entry.savedPath ? <code title={entry.savedPath}>{entry.savedPath}</code> : null}
+                </div>
+                <div className="history-actions">
+                  {canOpen ? (
+                    <button
+                      type="button"
+                      className="ghost-button"
+                      onClick={() => onOpen(entry)}
+                      title={entry.savedPath ? 'Open saved output' : 'Open this session output'}
+                    >
+                      <FolderOpen size={15} />
+                      Open
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    className="icon-button"
+                    onClick={() => onRemove(entry.id)}
+                    aria-label={`Remove ${entry.name} from history`}
+                    title="Remove history entry"
+                  >
+                    <Trash2 size={15} />
+                  </button>
+                </div>
+              </article>
+            )
+          })}
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -3308,7 +3581,15 @@ function Metric({ label, value }: { label: string; value: number }) {
   )
 }
 
-function QueueRow({ job, onRemove }: { job: QueueJob; onRemove: (id: string) => void }) {
+function QueueRow({
+  job,
+  onRemove,
+  onRetry,
+}: {
+  job: QueueJob
+  onRemove: (id: string) => void
+  onRetry: (id: string) => void
+}) {
   return (
     <tr>
       <td>
@@ -3337,9 +3618,22 @@ function QueueRow({ job, onRemove }: { job: QueueJob; onRemove: (id: string) => 
         </div>
       </td>
       <td>
-        <button type="button" className="icon-button" onClick={() => onRemove(job.id)} aria-label={`Remove ${job.name}`}>
-          <Trash2 size={16} />
-        </button>
+        <div className="queue-actions">
+          {job.status === 'error' ? (
+            <button
+              type="button"
+              className="icon-button"
+              onClick={() => onRetry(job.id)}
+              aria-label={`Retry ${job.name}`}
+              title="Retry failed job"
+            >
+              <RotateCcw size={16} />
+            </button>
+          ) : null}
+          <button type="button" className="icon-button" onClick={() => onRemove(job.id)} aria-label={`Remove ${job.name}`}>
+            <Trash2 size={16} />
+          </button>
+        </div>
       </td>
     </tr>
   )
@@ -3584,25 +3878,41 @@ function loadNativeFolders(): NativeFolders {
   }
 }
 
-function validateNativeFolders(folders: NativeFolders) {
-  const workDir = folders.workDir.trim()
-  const outputDir = folders.outputDir.trim()
+function loadConversionHistory() {
+  try {
+    return parseConversionHistory(localStorage.getItem(conversionHistoryStorageKey))
+  } catch {
+    return []
+  }
+}
 
-  if (!isAbsoluteFolderPath(workDir)) return 'Use an absolute work folder path.'
-  if (!isAbsoluteFolderPath(outputDir)) return 'Use an absolute save folder path.'
-  if (isCDrivePath(workDir) || isCDrivePath(outputDir)) {
-    return 'Choose non-system folders; this NoMeter workspace stays off C:.'
+function loadOcrLanguage() {
+  try {
+    return localStorage.getItem(ocrLanguageStorageKey)?.trim() || 'eng'
+  } catch {
+    return 'eng'
+  }
+}
+
+function formatHistoryDate(value: string) {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString()
+}
+
+function ocrLanguageLabel(code: string) {
+  const names: Record<string, string> = {
+    eng: 'English',
+    cym: 'Welsh',
+    deu: 'German',
+    fra: 'French',
+    spa: 'Spanish',
+    ita: 'Italian',
+    nld: 'Dutch',
+    por: 'Portuguese',
+    pol: 'Polish',
   }
 
-  return null
-}
-
-function isAbsoluteFolderPath(value: string) {
-  return /^[a-z]:[\\/]/i.test(value) || value.startsWith('\\\\') || value.startsWith('/')
-}
-
-function isCDrivePath(value: string) {
-  return /^c:[\\/]/i.test(value.trim())
+  return names[code] ? `${names[code]} (${code})` : code
 }
 
 function requiresDesktopTool(tool: ToolId) {

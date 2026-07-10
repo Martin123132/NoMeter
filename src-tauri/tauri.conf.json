@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "NoMeter",
-  "version": "0.5.0",
+  "version": "0.6.0-beta.1",
   "identifier": "dev.nometer.desktop",
   "build": {
     "beforeDevCommand": "npm.cmd run dev -- --host 127.0.0.1",

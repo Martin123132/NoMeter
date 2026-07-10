@@ -55,7 +55,7 @@ Run:
 npm.cmd run native:doctor
 ```
 
-to verify prerequisites. Tesseract and OCRmyPDF are expected warnings until their adapters are added. Ghostscript is optional: it is usable when `native:doctor` can find `gswin64c`, `gs`, or an explicit `NOMETER_GHOSTSCRIPT_EXE`. Rat-Trap is optional: it is usable when `native:doctor` can find `rat-trap`, an explicit `NOMETER_RATTRAP_EXE`, or a Python package root at `NOMETER_RATTRAP_ROOT`. When that root contains `.venv`, NoMeter prefers the root-local Python before falling back to `PATH`.
+to verify prerequisites. Tesseract and OCRmyPDF are optional local engines: their adapters remain available when the tools are installed, while CI reports their absence without failing. Ghostscript is optional: it is usable when `native:doctor` can find `gswin64c`, `gs`, or an explicit `NOMETER_GHOSTSCRIPT_EXE`. Rat-Trap is optional: it is usable when `native:doctor` can find `rat-trap`, an explicit `NOMETER_RATTRAP_EXE`, or a Python package root at `NOMETER_RATTRAP_ROOT`. When that root contains `.venv`, NoMeter prefers the root-local Python before falling back to `PATH`.
 
 On Windows, install Ghostscript from the official Artifex installer interactively and point the destination at your local tool folder, for example `${NOMETER_ROOT}/tools/ghostscript/gs10.07.1`. If the executable lives somewhere else, set `NOMETER_GHOSTSCRIPT_EXE` to the absolute `gswin64c.exe` path. NoMeter does not bundle Ghostscript in this repository.
 
@@ -65,15 +65,15 @@ Run:
 npm.cmd run native:ocr-preflight
 ```
 
-to check the planned OCR toolchain without installing anything. The check is advisory by default so CI can keep the OCR path discoverable while Tesseract/OCRmyPDF remain planned engines. After installing local OCR tools, run:
+to check the optional OCR toolchain. The check is advisory by default so CI can validate the configuration path without installing Tesseract or OCRmyPDF. After installing local OCR tools, run:
 
 ```powershell
 npm.cmd run native:ocr-preflight -- --strict
 ```
 
-before wiring OCR commands into the app. Tesseract should be installed under the configured non-system tool folder, or exposed with `NOMETER_TESSERACT_EXE`, and should include `eng.traineddata` in a reachable `tessdata` folder. The [Tesseract installation docs](https://tesseract-ocr.github.io/tessdoc/Installation.html) point Windows users to the UB Mannheim Windows builds. [OCRmyPDF's Windows guidance](https://ocrmypdf.readthedocs.io/en/latest/installation.html) requires 64-bit Python, Tesseract, and Ghostscript; prefer a root-local virtual environment under `${NOMETER_OCRMYPDF_ROOT}` before promoting OCRmyPDF from planned to wired.
+before testing OCR commands in the app. Tesseract should be installed under the configured non-system tool folder, or exposed with `NOMETER_TESSERACT_EXE`, and should include at least one `.traineddata` language in a reachable `tessdata` folder. The app queries `tesseract --list-langs` and only offers installed language codes. The [Tesseract installation docs](https://tesseract-ocr.github.io/tessdoc/Installation.html) point Windows users to the UB Mannheim Windows builds. [OCRmyPDF's Windows guidance](https://ocrmypdf.readthedocs.io/en/latest/installation.html) requires 64-bit Python, Tesseract, and Ghostscript; prefer a root-local virtual environment under `${NOMETER_OCRMYPDF_ROOT}`.
 
-`native:doctor` checks the optional engine roots above before falling back to `PATH`. Passing optional checks means the tool is discoverable on the developer machine. The UI marks Ghostscript and Rat-Trap as `Optional` and keeps Tesseract/OCRmyPDF as `Planned` until their native commands, sidecar policy, and sample/fixture paths exist.
+`native:doctor` checks the optional engine roots above before falling back to `PATH`. Passing optional checks means the tool is discoverable on the developer machine. The UI marks Ghostscript, Rat-Trap, Tesseract, and OCRmyPDF as `Optional` because their adapters are wired but their third-party runtimes are not bundled.
 
 Build the preferred portable release artifacts with:
 
@@ -101,11 +101,13 @@ The current Ghostscript adapter accepts a PDF `File`, writes it to the configure
 
 The current Rat-Trap adapter accepts queued NoMeter files, writes them to a configured work folder, runs a locally installed Rat-Trap CLI or Python package entry point, and copies the `.gmw` output to the configured save folder. It can also accept a `.gmw` archive, save a metadata report from `rat-trap info`, extract it into the configured save folder, or export it to a standard ZIP. It does not bundle Rat-Trap or copy private engine source into this public repository.
 
-The current Tesseract adapter accepts image files, writes them to the configured work folder, runs a locally installed Tesseract executable with English language data, and copies the plain-text OCR output to the configured save folder. It does not upload images or bundle Tesseract.
+The current Tesseract adapter accepts image files, writes them to the configured work folder, runs a locally installed Tesseract executable with the selected installed language data, and copies the plain-text OCR output to the configured save folder. It does not upload images or bundle Tesseract.
 
-The current OCRmyPDF adapter accepts PDF files, writes them to the configured work folder, runs a locally installed OCRmyPDF executable with the configured Tesseract, Ghostscript, and qpdf paths, and copies the searchable PDF output to the configured save folder. It does not upload PDFs or bundle OCRmyPDF.
+The current OCRmyPDF adapter accepts PDF files, writes them to the configured work folder, runs a locally installed OCRmyPDF executable with the selected language and keep-text or redo-OCR mode, and copies the searchable PDF output to the configured save folder. It does not upload PDFs or bundle OCRmyPDF.
 
-## Planned OCR/PDF Engine Rules
+Generated `job-*` directories are eligible for automatic cleanup after 24 hours. Each new work directory carries a `.nometer-job` ownership marker; cleanup refuses to remove directories without it. The cleanup command only inspects direct generated job directories under the configured non-system Work folder, skips symbolic links, and never touches the Save folder. `Clean now` uses the same guard with a zero-hour threshold.
+
+## Optional Engine Promotion Rules
 
 Before Ghostscript, Tesseract, or OCRmyPDF is promoted from optional-local to bundled:
 

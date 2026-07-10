@@ -6,10 +6,12 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
     process::Command,
-    time::{SystemTime, UNIX_EPOCH},
+    time::{Duration, SystemTime, UNIX_EPOCH},
 };
 use tauri::AppHandle;
 use tauri_plugin_shell::ShellExt;
+
+const JOB_MARKER_FILE: &str = ".nometer-job";
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -61,6 +63,7 @@ struct PdfRasterizeRequest {
 struct OcrTextRequest {
     file_name: String,
     bytes_base64: String,
+    language: Option<String>,
     folders: Option<NativeFolders>,
 }
 
@@ -69,7 +72,16 @@ struct OcrTextRequest {
 struct OcrSearchablePdfRequest {
     file_name: String,
     bytes_base64: String,
+    language: Option<String>,
+    mode: Option<String>,
     folders: Option<NativeFolders>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct CleanupWorkRequest {
+    folders: Option<NativeFolders>,
+    max_age_hours: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -111,6 +123,14 @@ struct NativeArtifact {
     saved_path: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct NativeCleanupResult {
+    removed_directories: usize,
+    reclaimed_bytes: u64,
+    work_dir: String,
+}
+
 struct GhostscriptRasterConfig {
     device: &'static str,
     extension: &'static str,
@@ -132,9 +152,7 @@ async fn transcode_media(
 
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let stem = safe_stem(&request.file_name);
     let input_extension = safe_extension(&request.file_name).unwrap_or_else(|| "media".into());
@@ -228,9 +246,7 @@ async fn optimize_pdf(
 
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let stem = safe_stem(&request.file_name);
     let output_name = format!("{stem}-optimized.pdf");
@@ -304,9 +320,7 @@ async fn compress_pdf_with_ghostscript(
     let ghostscript = ghostscript_command()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let stem = safe_stem(&request.file_name);
     let output_name = format!("{stem}-compressed.pdf");
@@ -386,7 +400,7 @@ async fn rasterize_pdf_with_ghostscript(
     let ghostscript = ghostscript_command()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
+    let job_dir = create_job_dir(&work_dir)?;
     let pages_dir = job_dir.join("pages");
     fs::create_dir_all(&pages_dir)
         .map_err(|error| format!("Could not create raster page folder: {error}"))?;
@@ -469,6 +483,7 @@ async fn rasterize_pdf_with_ghostscript(
 #[tauri::command]
 async fn ocr_image_to_text(request: OcrTextRequest) -> Result<NativeArtifact, String> {
     let tesseract = tesseract_command_spec()?;
+    let language = normalize_ocr_language(request.language.as_deref())?;
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
         .map_err(|error| format!("Could not decode OCR input: {error}"))?;
@@ -479,9 +494,7 @@ async fn ocr_image_to_text(request: OcrTextRequest) -> Result<NativeArtifact, St
 
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create OCR work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let stem = safe_stem(&request.file_name);
     let input_extension = safe_extension(&request.file_name).unwrap_or_else(|| "png".into());
@@ -503,7 +516,7 @@ async fn ocr_image_to_text(request: OcrTextRequest) -> Result<NativeArtifact, St
     let mut command = Command::new(&tesseract.executable);
     command.current_dir(&job_dir);
     command.args(&tesseract.prefix_args);
-    command.args([input_arg, output_base_arg, "-l", "eng"]);
+    command.args([input_arg, output_base_arg, "-l", language.as_str()]);
     for (name, value) in &tesseract.env {
         command.env(name, value);
     }
@@ -541,6 +554,8 @@ async fn ocr_image_to_text(request: OcrTextRequest) -> Result<NativeArtifact, St
 #[tauri::command]
 async fn ocr_searchable_pdf(request: OcrSearchablePdfRequest) -> Result<NativeArtifact, String> {
     let ocrmypdf = ocrmypdf_command_spec()?;
+    let language = normalize_ocr_language(request.language.as_deref())?;
+    let mode_arg = ocr_pdf_mode_arg(request.mode.as_deref())?;
     let input_bytes = general_purpose::STANDARD
         .decode(request.bytes_base64.as_bytes())
         .map_err(|error| format!("Could not decode OCR PDF input: {error}"))?;
@@ -551,9 +566,7 @@ async fn ocr_searchable_pdf(request: OcrSearchablePdfRequest) -> Result<NativeAr
 
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create searchable PDF work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let stem = safe_stem(&request.file_name);
     let output_name = format!("{stem}-searchable.pdf");
@@ -575,10 +588,10 @@ async fn ocr_searchable_pdf(request: OcrSearchablePdfRequest) -> Result<NativeAr
     command.args(&ocrmypdf.prefix_args);
     command.args([
         "--language",
-        "eng",
+        language.as_str(),
         "--output-type",
         "pdf",
-        "--skip-text",
+        mode_arg,
         input_arg,
         output_arg,
     ]);
@@ -627,7 +640,7 @@ async fn compress_files_with_rat_trap(
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
+    let job_dir = create_job_dir(&work_dir)?;
     let input_dir = job_dir.join("input");
     fs::create_dir_all(&input_dir)
         .map_err(|error| format!("Could not create Rat-Trap input folder: {error}"))?;
@@ -704,9 +717,7 @@ async fn extract_rat_trap_archive(
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create Rat-Trap work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let input_path = write_rat_trap_archive_input(&request, &job_dir)?;
     let folder_name = format!("{}-extracted", safe_stem(&request.file_name));
@@ -747,9 +758,7 @@ async fn inspect_rat_trap_archive(
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create Rat-Trap work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let input_path = write_rat_trap_archive_input(&request, &job_dir)?;
     let input_arg = input_path
@@ -779,9 +788,7 @@ async fn export_rat_trap_archive_to_zip(
     let rat_trap = rat_trap_command_spec()?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create Rat-Trap work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let input_path = write_rat_trap_archive_input(&request, &job_dir)?;
     let output_name = format!("{}.zip", safe_stem(&request.file_name));
@@ -824,9 +831,7 @@ async fn convert_document(
         .ok_or_else(|| format!("Unsupported document output format: {output_format}"))?;
     let work_dir = openforge_work_dir(request.folders.as_ref())?;
     let output_dir = openforge_output_dir(request.folders.as_ref())?;
-    let job_dir = work_dir.join(unique_job_id()?);
-    fs::create_dir_all(&job_dir)
-        .map_err(|error| format!("Could not create work folder: {error}"))?;
+    let job_dir = create_job_dir(&work_dir)?;
 
     let stem = safe_stem(&request.file_name);
     let input_extension = safe_extension(&request.file_name).unwrap_or_else(|| "txt".into());
@@ -894,6 +899,171 @@ struct ExternalCommandSpec {
     executable: String,
     prefix_args: Vec<String>,
     env: Vec<(String, String)>,
+}
+
+#[tauri::command]
+fn list_ocr_languages() -> Result<Vec<String>, String> {
+    let tesseract = tesseract_command_spec()?;
+    let mut command = Command::new(&tesseract.executable);
+    command.args(&tesseract.prefix_args);
+    command.arg("--list-langs");
+    for (name, value) in &tesseract.env {
+        command.env(name, value);
+    }
+
+    let output = command.output().map_err(|error| {
+        format!(
+            "Tesseract is unavailable: {error}. Install Tesseract or set NOMETER_TESSERACT_EXE/NOMETER_TESSERACT_ROOT."
+        )
+    })?;
+
+    if !output.status.success() {
+        let stderr = compact_log(&String::from_utf8_lossy(&output.stderr));
+        return Err(format!(
+            "Tesseract language discovery failed with status {:?}: {stderr}",
+            output.status.code()
+        ));
+    }
+
+    let combined = format!(
+        "{}\n{}",
+        String::from_utf8_lossy(&output.stdout),
+        String::from_utf8_lossy(&output.stderr)
+    );
+    let mut languages = combined
+        .lines()
+        .filter_map(|line| normalize_ocr_language(Some(line)).ok())
+        .collect::<Vec<_>>();
+    languages.sort();
+    languages.dedup();
+
+    if languages.is_empty() {
+        return Err("Tesseract did not report any installed OCR languages.".into());
+    }
+
+    Ok(languages)
+}
+
+#[tauri::command]
+fn cleanup_native_work_dir(request: CleanupWorkRequest) -> Result<NativeCleanupResult, String> {
+    let work_dir = openforge_work_dir(request.folders.as_ref())?;
+    let max_age_hours = request.max_age_hours.unwrap_or(24).min(24 * 365);
+    let minimum_age = Duration::from_secs(max_age_hours.saturating_mul(60 * 60));
+    let mut result = NativeCleanupResult {
+        removed_directories: 0,
+        reclaimed_bytes: 0,
+        work_dir: work_dir.to_string_lossy().to_string(),
+    };
+
+    if !work_dir.exists() {
+        return Ok(result);
+    }
+
+    let entries = fs::read_dir(&work_dir)
+        .map_err(|error| format!("Could not inspect the configured work folder: {error}"))?;
+    let now = SystemTime::now();
+
+    for entry in entries {
+        let entry = entry.map_err(|error| format!("Could not inspect a work item: {error}"))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("Could not inspect a work item type: {error}"))?;
+        let file_name = entry.file_name();
+        let file_name = file_name.to_string_lossy();
+
+        if !file_type.is_dir() || file_type.is_symlink() || !is_job_work_dir_name(&file_name) {
+            continue;
+        }
+
+        let path = entry.path();
+        if !path.join(JOB_MARKER_FILE).is_file() {
+            continue;
+        }
+
+        let metadata = entry
+            .metadata()
+            .map_err(|error| format!("Could not inspect {file_name}: {error}"))?;
+        let modified = metadata
+            .modified()
+            .map_err(|error| format!("Could not read the age of {file_name}: {error}"))?;
+        let Ok(age) = now.duration_since(modified) else {
+            continue;
+        };
+
+        if age < minimum_age {
+            continue;
+        }
+
+        let bytes = directory_size(&path)?;
+        fs::remove_dir_all(&path)
+            .map_err(|error| format!("Could not remove stale work folder {file_name}: {error}"))?;
+        result.removed_directories += 1;
+        result.reclaimed_bytes = result.reclaimed_bytes.saturating_add(bytes);
+    }
+
+    Ok(result)
+}
+
+fn directory_size(path: &Path) -> Result<u64, String> {
+    let mut total = 0_u64;
+
+    for entry in
+        fs::read_dir(path).map_err(|error| format!("Could not measure a work folder: {error}"))?
+    {
+        let entry = entry.map_err(|error| format!("Could not measure a work item: {error}"))?;
+        let file_type = entry
+            .file_type()
+            .map_err(|error| format!("Could not inspect a work item type: {error}"))?;
+
+        if file_type.is_symlink() {
+            continue;
+        }
+
+        if file_type.is_dir() {
+            total = total.saturating_add(directory_size(&entry.path())?);
+        } else if file_type.is_file() {
+            total = total.saturating_add(
+                entry
+                    .metadata()
+                    .map_err(|error| format!("Could not measure a work file: {error}"))?
+                    .len(),
+            );
+        }
+    }
+
+    Ok(total)
+}
+
+fn is_job_work_dir_name(value: &str) -> bool {
+    value.strip_prefix("job-").is_some_and(|suffix| {
+        !suffix.is_empty() && suffix.chars().all(|character| character.is_ascii_digit())
+    })
+}
+
+fn normalize_ocr_language(value: Option<&str>) -> Result<String, String> {
+    let language = value.unwrap_or("eng").trim();
+
+    if language.is_empty()
+        || language.len() > 128
+        || language.split('+').any(|part| {
+            part.is_empty()
+                || !part.chars().all(|character| {
+                    character.is_ascii_alphanumeric() || matches!(character, '_' | '-' | '/')
+                })
+        })
+    {
+        return Err("Choose a valid installed OCR language code.".into());
+    }
+
+    Ok(language.into())
+}
+
+fn ocr_pdf_mode_arg(value: Option<&str>) -> Result<&'static str, String> {
+    match value.unwrap_or("skip").trim().to_ascii_lowercase().as_str() {
+        "skip" => Ok("--skip-text"),
+        "redo" => Ok("--redo-ocr"),
+        other => Err(format!("Unsupported searchable PDF OCR mode: {other}")),
+    }
 }
 
 fn write_rat_trap_archive_input(
@@ -1584,6 +1754,13 @@ fn openforge_work_dir(folders: Option<&NativeFolders>) -> Result<PathBuf, String
         return Ok(d_drive_root.join("work"));
     }
 
+    #[cfg(windows)]
+    return Err(
+        "Configure an absolute non-system NoMeter work folder. C: temporary storage is disabled."
+            .into(),
+    );
+
+    #[cfg(not(windows))]
     Ok(std::env::temp_dir().join("nometer-work"))
 }
 
@@ -1709,6 +1886,22 @@ fn unique_job_id() -> Result<String, String> {
     Ok(format!("job-{nanos}"))
 }
 
+fn create_job_dir(work_dir: &Path) -> Result<PathBuf, String> {
+    let job_dir = work_dir.join(unique_job_id()?);
+    fs::create_dir_all(&job_dir)
+        .map_err(|error| format!("Could not create NoMeter work folder: {error}"))?;
+
+    if let Err(error) = fs::write(
+        job_dir.join(JOB_MARKER_FILE),
+        b"NoMeter generated work directory\n",
+    ) {
+        let _ = fs::remove_dir_all(&job_dir);
+        return Err(format!("Could not mark the NoMeter work folder: {error}"));
+    }
+
+    Ok(job_dir)
+}
+
 fn safe_stem(file_name: &str) -> String {
     let stem = file_name
         .rsplit_once('.')
@@ -1793,6 +1986,61 @@ fn compact_log(value: &str) -> String {
         .collect()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::{
+        create_job_dir, is_job_work_dir_name, normalize_ocr_language, ocr_pdf_mode_arg,
+        unique_job_id, JOB_MARKER_FILE,
+    };
+    use std::fs;
+
+    #[test]
+    fn accepts_safe_ocr_language_codes() {
+        assert_eq!(normalize_ocr_language(None).unwrap(), "eng");
+        assert_eq!(normalize_ocr_language(Some("deu")).unwrap(), "deu");
+        assert_eq!(
+            normalize_ocr_language(Some("eng+script/Latin")).unwrap(),
+            "eng+script/Latin"
+        );
+    }
+
+    #[test]
+    fn rejects_unsafe_ocr_language_codes() {
+        assert!(normalize_ocr_language(Some("eng --version")).is_err());
+        assert!(normalize_ocr_language(Some("../eng")).is_err());
+        assert!(normalize_ocr_language(Some("eng+")).is_err());
+    }
+
+    #[test]
+    fn maps_supported_pdf_ocr_modes() {
+        assert_eq!(ocr_pdf_mode_arg(None).unwrap(), "--skip-text");
+        assert_eq!(ocr_pdf_mode_arg(Some("redo")).unwrap(), "--redo-ocr");
+        assert!(ocr_pdf_mode_arg(Some("force")).is_err());
+    }
+
+    #[test]
+    fn cleanup_only_recognizes_generated_job_directories() {
+        assert!(is_job_work_dir_name("job-123456789"));
+        assert!(!is_job_work_dir_name("job-"));
+        assert!(!is_job_work_dir_name("job-notes"));
+        assert!(!is_job_work_dir_name("outputs"));
+    }
+
+    #[test]
+    fn generated_job_directories_receive_an_ownership_marker() {
+        let test_root = std::env::temp_dir().join(format!(
+            "nometer-job-marker-test-{}",
+            unique_job_id().unwrap()
+        ));
+        fs::create_dir_all(&test_root).unwrap();
+
+        let job_dir = create_job_dir(&test_root).unwrap();
+        assert!(job_dir.join(JOB_MARKER_FILE).is_file());
+
+        fs::remove_dir_all(test_root).unwrap();
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
@@ -1806,6 +2054,8 @@ fn main() {
             compress_files_with_rat_trap,
             ocr_image_to_text,
             ocr_searchable_pdf,
+            list_ocr_languages,
+            cleanup_native_work_dir,
             inspect_rat_trap_archive,
             extract_rat_trap_archive,
             export_rat_trap_archive_to_zip

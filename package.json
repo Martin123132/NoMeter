@@ -1,7 +1,7 @@
 {
   "name": "nometer",
   "private": false,
-  "version": "0.5.0",
+  "version": "0.6.0-beta.1",
   "description": "Free for personal/non-commercial use: local-first file conversion and PDF tools with no uploads.",
   "license": "SEE LICENSE IN LICENSE",
   "type": "module",
@@ -9,6 +9,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "test": "vitest run",
     "preview": "vite preview",
     "license:positioning-check": "node scripts/license-positioning-check.mjs",
     "qa:guided-flow-check": "node scripts/guided-flow-check.mjs",
@@ -37,6 +38,7 @@
     "release:first-release-check": "node scripts/first-release-check.mjs",
     "tauri": "node scripts/with-d-toolchain.mjs -- tauri",
     "desktop:dev": "node scripts/with-d-toolchain.mjs -- tauri dev",
+    "desktop:ui-smoke": "node scripts/desktop-ui-smoke.mjs",
     "desktop:build": "node scripts/with-d-toolchain.mjs -- tauri build && node scripts/relocate-tauri-cache.mjs"
   },
   "dependencies": {
@@ -62,6 +64,7 @@
     "globals": "^17.6.0",
     "typescript": "~6.0.2",
     "typescript-eslint": "^8.59.2",
-    "vite": "^8.0.12"
+    "vite": "^8.0.12",
+    "vitest": "^4.1.10"
   }
 }

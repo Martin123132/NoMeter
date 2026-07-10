@@ -4,11 +4,19 @@ import { resolve } from 'node:path'
 const repositoryRoot = process.cwd()
 const appPath = resolve(repositoryRoot, 'src', 'App.tsx')
 const cssPath = resolve(repositoryRoot, 'src', 'App.css')
+const jobsPath = resolve(repositoryRoot, 'src', 'lib', 'jobs.ts')
+const nativeFoldersPath = resolve(repositoryRoot, 'src', 'lib', 'nativeFolders.ts')
+const nativeEnginesPath = resolve(repositoryRoot, 'src', 'lib', 'nativeEngines.ts')
+const nativeMainPath = resolve(repositoryRoot, 'src-tauri', 'src', 'main.rs')
 const packagePath = resolve(repositoryRoot, 'package.json')
 const workflowPath = resolve(repositoryRoot, '.github', 'workflows', 'ci.yml')
 
 const appText = loadText(appPath)
 const cssText = loadText(cssPath)
+const jobsText = loadText(jobsPath)
+const nativeFoldersText = loadText(nativeFoldersPath)
+const nativeEnginesText = loadText(nativeEnginesPath)
+const nativeMainText = loadText(nativeMainPath)
 const packageText = loadText(packagePath)
 const workflowText = loadText(workflowPath)
 
@@ -132,13 +140,35 @@ checkText(appText, appPath, 'native folder guardrails', [
   "workDir: 'D:\\\\Codex\\\\OpenForge\\\\work'",
   "outputDir: 'D:\\\\Codex\\\\OpenForge\\\\outputs\\\\converted'",
   'const nativeFolderStorageKey = \'nometer.nativeFolders.v1\'',
-  'function validateNativeFolders(folders: NativeFolders)',
-  'isCDrivePath(workDir) || isCDrivePath(outputDir)',
-  'this NoMeter workspace stays off C:.',
   'Desktop saves native outputs to this Save folder.',
   'pickNativeFolder',
   'chooseNativeFolder',
   'path-picker-button',
+])
+
+checkText(nativeFoldersText, nativeFoldersPath, 'native folder validation module', [
+  'export function validateNativeFolders(folders: NativeFolders)',
+  'isCDrivePath(workDir) || isCDrivePath(outputDir)',
+  'export function isCDrivePath(value: string)',
+  'this NoMeter workspace stays off C:.',
+])
+
+checkText(jobsText, jobsPath, 'common job schema and local history', [
+  'export type QueueJob',
+  'export type ConversionHistoryEntry',
+  "export const conversionHistoryStorageKey = 'nometer.conversionHistory.v1'",
+  'appendConversionHistory',
+  'parseConversionHistory',
+  'resetJobForRetry',
+])
+
+checkText(appText, appPath, 'persistent history and retry UI', [
+  'const [historyEntries, setHistoryEntries]',
+  'historyEntryFromArtifact(artifact, activeTool)',
+  'resetJobForRetry(job)',
+  '<HistoryPanel',
+  'Local conversion history',
+  'Retry failed job',
 ])
 
 checkText(appText, appPath, 'native optional engine status badges', [
@@ -171,7 +201,7 @@ checkText(appText, appPath, 'Tesseract OCR image text route', [
   "label: 'OCR image text'",
   'Tesseract TXT',
   'Plain text OCR',
-  'ocrImageToTextFile(job.file, nativeFolders)',
+  'ocrImageToTextFile(job.file, { language: ocrLanguage }, nativeFolders)',
   'Tesseract OCR text',
   'Tesseract OCR needs the NoMeter desktop app and a local Tesseract install.',
   'Install Tesseract or set NOMETER_TESSERACT_ROOT',
@@ -182,10 +212,39 @@ checkText(appText, appPath, 'OCRmyPDF searchable PDF route', [
   "label: 'OCR searchable PDF'",
   'OCRmyPDF',
   'Searchable PDF',
-  'ocrPdfToSearchableFile(job.file, nativeFolders)',
+  'ocrPdfToSearchableFile(',
+  '{ language: ocrLanguage, mode: ocrPdfMode }',
   'OCRmyPDF searchable PDF',
   'Searchable PDF OCR needs the NoMeter desktop app and a local OCRmyPDF install.',
   'Install OCRmyPDF or set NOMETER_OCRMYPDF_ROOT',
+])
+
+checkText(appText, appPath, 'installed OCR language and mode controls', [
+  'listOcrLanguages()',
+  'aria-label="Searchable PDF OCR mode"',
+  'Keep text',
+  'Redo OCR',
+  'ocrLanguageStatus',
+])
+
+checkText(nativeEnginesText, nativeEnginesPath, 'guarded native cleanup bridge', [
+  'export async function cleanupNativeWorkDir(',
+  "invoke<NativeCleanupResult>('cleanup_native_work_dir'",
+  'maxAgeHours',
+])
+
+checkText(appText, appPath, 'native cleanup controls', [
+  'cleanupNativeWorkDir(nativeFolders, 24)',
+  'cleanupNativeWorkDir(nativeFolders, 0)',
+  'Clean now',
+  'cleanupStatus',
+])
+
+checkText(nativeMainText, nativeMainPath, 'native cleanup ownership guard', [
+  'const JOB_MARKER_FILE: &str = ".nometer-job";',
+  'let job_dir = create_job_dir(&work_dir)?;',
+  'if !path.join(JOB_MARKER_FILE).is_file()',
+  'file_type.is_symlink()',
 ])
 
 checkText(cssText, cssPath, 'responsive guided flow layout', [
@@ -220,13 +279,24 @@ checkText(cssText, cssPath, 'mobile mixed queue cards', [
   'white-space: normal;',
 ])
 
+checkText(cssText, cssPath, 'history and OCR control styling', [
+  '.history-panel',
+  '.history-row',
+  '.history-actions',
+  '.ocr-settings',
+  '.segmented-control.two-up',
+])
+
 checkText(packageText, packagePath, 'package script wiring', [
   '"qa:guided-flow-check": "node scripts/guided-flow-check.mjs"',
+  '"test": "vitest run"',
 ])
 
 checkText(workflowText, workflowPath, 'CI wiring', [
   'Run guided flow regression guard',
   'npm run qa:guided-flow-check',
+  'Run unit tests',
+  'npm test',
 ])
 
 if (failed) {
